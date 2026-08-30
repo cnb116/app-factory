@@ -32,11 +32,14 @@ export default function Home() {
         <h1 className="text-center text-4xl font-extrabold text-black sm:text-5xl">
           텍스트 정리기
         </h1>
+        <p className="text-center text-lg text-zinc-600 sm:text-xl">
+          카톡·메모에서 복사한 지저분한 텍스트, 1초 만에 깔끔하게
+        </p>
 
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="여기에 텍스트를 입력하세요"
+          placeholder="카톡에서 복사한 글을 여기에 붙여넣어 보세요"
           className="h-64 w-full rounded-2xl border-4 border-black p-5 text-2xl leading-relaxed text-black focus:outline-none focus:ring-4 focus:ring-yellow-400 sm:h-80"
         />
 
@@ -61,6 +64,10 @@ export default function Home() {
         >
           불필요한 공백/줄바꿈 1초 정리
         </button>
+
+        <p className="text-center text-base text-zinc-500">
+          블로그 원고, 문자 메시지, 보고서 정리에 사용하세요
+        </p>
 
         <button
           onClick={handlePremiumClick}
