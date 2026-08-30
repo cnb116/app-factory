@@ -76,13 +76,13 @@ export default function Home() {
         </p>
 
         <p className="text-center text-sm font-bold tracking-widest text-yellow-600">
-          유료 · 하루 3회 무료 체험
+          하루 3회 무료 체험 / 1회 결제로 평생 무제한
         </p>
         <button
           onClick={handlePremiumClick}
           className="w-full rounded-2xl bg-yellow-400 py-8 text-2xl font-extrabold text-black shadow-lg transition active:scale-95 sm:text-3xl"
         >
-          ✨ AI 맞춤법 & 자연스러운 문장 교정 (3,900원)
+          ✨ AI 맞춤법 교정 평생 소장 (1회 결제 3,900원)
         </button>
         <p className="text-center text-sm font-bold tracking-widest text-yellow-600">
           유료 · 하루 3회 무료 체험
