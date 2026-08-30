@@ -84,9 +84,6 @@ export default function Home() {
         >
           ✨ AI 맞춤법 교정 평생 소장 (1회 결제 3,900원)
         </button>
-        <p className="text-center text-sm font-bold tracking-widest text-yellow-600">
-          유료 · 하루 3회 무료 체험
-        </p>
       </div>
     </div>
   );
