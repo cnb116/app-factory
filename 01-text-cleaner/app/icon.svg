@@ -1,0 +1,23 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경: 검정 라운드 사각형 -->
+  <rect width="512" height="512" rx="96" fill="#000000"/>
+
+  <!-- 지저분한 텍스트 라인 (왼쪽, 불규칙하게 배치) -->
+  <rect x="90" y="150" width="180" height="24" rx="12" fill="#FFD400"/>
+  <rect x="90" y="196" width="120" height="24" rx="12" fill="#FFD400" opacity="0.55"/>
+  <rect x="90" y="242" width="150" height="24" rx="12" fill="#FFD400" opacity="0.35"/>
+
+  <!-- 정리된 텍스트 라인 (오른쪽, 깔끔하게 정렬) -->
+  <rect x="300" y="150" width="122" height="24" rx="12" fill="#FFD400"/>
+  <rect x="300" y="196" width="122" height="24" rx="12" fill="#FFD400"/>
+  <rect x="300" y="242" width="122" height="24" rx="12" fill="#FFD400"/>
+
+  <!-- 화살표: 정리 방향 표시 -->
+  <path d="M 258 202 L 290 202 M 278 188 L 292 202 L 278 216"
+        stroke="#FFD400" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- 하단 큰 체크(왕버튼 느낌의 완료 표시) -->
+  <circle cx="256" cy="370" r="58" fill="#FFD400"/>
+  <path d="M 230 372 L 248 390 L 286 348"
+        stroke="#000000" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
