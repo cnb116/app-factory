@@ -1,9 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { consumeFreeUse, getRemainingFreeUses } from "@/lib/usage";
 
 export default function Home() {
   const [text, setText] = useState("");
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [isCorrecting, setIsCorrecting] = useState(false);
+
+  useEffect(() => {
+    setRemaining(getRemainingFreeUses());
+  }, []);
 
   const charsWithSpace = text.length;
   const charsNoSpace = useMemo(() => text.replace(/\s/g, "").length, [text]);
@@ -22,8 +29,40 @@ export default function Home() {
     setText(cleaned);
   };
 
-  const handlePremiumClick = () => {
-    alert("결제 준비 중입니다");
+  const handlePremiumClick = async () => {
+    if (isCorrecting) return;
+
+    const currentRemaining = getRemainingFreeUses();
+    if (currentRemaining <= 0) {
+      alert("결제 준비 중입니다");
+      return;
+    }
+
+    if (text.trim() === "") {
+      alert("교정할 텍스트를 먼저 입력해주세요");
+      return;
+    }
+
+    setIsCorrecting(true);
+    try {
+      const response = await fetch("/api/correct-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || typeof data.corrected !== "string") {
+        throw new Error(data?.error || "교정 실패");
+      }
+
+      setText(data.corrected);
+      setRemaining(consumeFreeUse());
+    } catch {
+      alert("잠시 후 다시 시도해주세요");
+    } finally {
+      setIsCorrecting(false);
+    }
   };
 
   return (
@@ -78,11 +117,17 @@ export default function Home() {
         <p className="text-center text-sm font-bold tracking-widest text-yellow-600">
           하루 3회 무료 체험 / 1회 결제로 평생 무제한
         </p>
+        <p className="text-center text-sm font-semibold text-zinc-500">
+          오늘 남은 무료 횟수: {remaining === null ? "-" : `${remaining}회`}
+        </p>
         <button
           onClick={handlePremiumClick}
+          disabled={isCorrecting}
           className="w-full rounded-2xl bg-yellow-400 py-8 text-2xl font-extrabold text-black shadow-lg transition active:scale-95 sm:text-3xl"
         >
-          ✨ AI 맞춤법 교정 평생 소장 (1회 결제 3,900원)
+          {isCorrecting
+            ? "교정 중..."
+            : "✨ AI 맞춤법 교정 평생 소장 (1회 결제 3,900원)"}
         </button>
       </div>
     </div>
