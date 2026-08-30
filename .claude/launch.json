@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "01-text-cleaner",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "01-text-cleaner", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}
