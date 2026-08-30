@@ -58,23 +58,35 @@ export default function Home() {
           </div>
         </div>
 
+        <p className="text-center text-sm font-bold tracking-widest text-zinc-400">
+          무료
+        </p>
         <button
           onClick={handleClean}
           className="w-full rounded-2xl bg-black py-8 text-3xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 sm:text-4xl"
         >
           불필요한 공백/줄바꿈 1초 정리
         </button>
+        <p className="text-center text-sm font-bold tracking-widest text-zinc-400">
+          무료
+        </p>
 
         <p className="text-center text-base text-zinc-500">
           블로그 원고, 문자 메시지, 보고서 정리에 사용하세요
         </p>
 
+        <p className="text-center text-sm font-bold tracking-widest text-yellow-600">
+          유료 · 하루 3회 무료 체험
+        </p>
         <button
           onClick={handlePremiumClick}
           className="w-full rounded-2xl bg-yellow-400 py-8 text-2xl font-extrabold text-black shadow-lg transition active:scale-95 sm:text-3xl"
         >
-          프리미엄 AI 맞춤법 교정기 열기 - 3,900원
+          ✨ AI 맞춤법 & 자연스러운 문장 교정 (3,900원)
         </button>
+        <p className="text-center text-sm font-bold tracking-widest text-yellow-600">
+          유료 · 하루 3회 무료 체험
+        </p>
       </div>
     </div>
   );
