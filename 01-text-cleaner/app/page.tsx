@@ -7,6 +7,7 @@ export default function Home() {
   const [text, setText] = useState("");
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isCorrecting, setIsCorrecting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setRemaining(getRemainingFreeUses());
@@ -27,6 +28,33 @@ export default function Home() {
       .replace(/\n{3,}/g, "\n\n")
       .trim();
     setText(cleaned);
+  };
+
+  const handleCopy = async () => {
+    if (text.trim() === "") {
+      alert("복사할 내용이 없습니다");
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      alert("복사에 실패했습니다. 텍스트를 직접 선택해서 복사해주세요");
+    }
   };
 
   const handlePremiumClick = async () => {
@@ -109,6 +137,14 @@ export default function Home() {
         <p className="text-center text-base font-bold tracking-widest text-zinc-400">
           무료
         </p>
+
+        <button
+          onClick={handleCopy}
+          disabled={text.trim() === ""}
+          className="w-full rounded-xl bg-black py-3 text-lg font-bold text-yellow-400 shadow transition active:scale-95 disabled:opacity-40"
+        >
+          {copied ? "복사됨! ✓" : "정리된 글 복사하기"}
+        </button>
 
         <p className="text-center text-lg text-zinc-500">
           블로그 원고, 문자 메시지, 보고서 정리에 사용하세요
