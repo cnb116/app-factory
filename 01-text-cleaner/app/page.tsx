@@ -110,7 +110,7 @@ export default function Home() {
           className="h-64 w-full rounded-2xl border-4 border-black p-5 text-2xl leading-relaxed text-black focus:outline-none focus:ring-4 focus:ring-yellow-400 sm:h-80"
         />
 
-        <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-3 text-center">
           <div className="rounded-xl border-2 border-black bg-zinc-50 p-4">
             <div className="text-xl font-medium text-zinc-700">글자수(공백포함)</div>
             <div className="text-3xl font-bold text-black">{charsWithSpace}</div>
@@ -125,18 +125,12 @@ export default function Home() {
           </div>
         </div>
 
-        <p className="text-center text-base font-bold tracking-widest text-zinc-400">
-          무료
-        </p>
         <button
           onClick={handleClean}
           className="w-full rounded-2xl bg-black py-5 text-2xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 sm:text-3xl"
         >
           불필요한 공백/줄바꿈 1초 정리
         </button>
-        <p className="text-center text-base font-bold tracking-widest text-zinc-400">
-          무료
-        </p>
 
         <button
           onClick={handleCopy}
