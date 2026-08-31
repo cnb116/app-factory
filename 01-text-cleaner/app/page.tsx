@@ -71,7 +71,7 @@ export default function Home() {
         <h1 className="text-center text-4xl font-extrabold text-black sm:text-5xl">
           텍스트 정리기
         </h1>
-        <p className="text-center text-lg text-zinc-600 sm:text-xl">
+        <p className="text-center text-xl text-zinc-600 sm:text-2xl">
           카톡·메모에서 복사한 지저분한 텍스트, 1초 만에 깔끔하게
         </p>
 
@@ -84,46 +84,46 @@ export default function Home() {
 
         <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
           <div className="rounded-xl border-2 border-black bg-zinc-50 p-4">
-            <div className="text-lg font-medium text-zinc-700">글자수(공백포함)</div>
+            <div className="text-xl font-medium text-zinc-700">글자수(공백포함)</div>
             <div className="text-3xl font-bold text-black">{charsWithSpace}</div>
           </div>
           <div className="rounded-xl border-2 border-black bg-zinc-50 p-4">
-            <div className="text-lg font-medium text-zinc-700">글자수(공백제외)</div>
+            <div className="text-xl font-medium text-zinc-700">글자수(공백제외)</div>
             <div className="text-3xl font-bold text-black">{charsNoSpace}</div>
           </div>
           <div className="rounded-xl border-2 border-black bg-zinc-50 p-4">
-            <div className="text-lg font-medium text-zinc-700">단어 수</div>
+            <div className="text-xl font-medium text-zinc-700">단어 수</div>
             <div className="text-3xl font-bold text-black">{wordCount}</div>
           </div>
         </div>
 
-        <p className="text-center text-sm font-bold tracking-widest text-zinc-400">
+        <p className="text-center text-base font-bold tracking-widest text-zinc-400">
           무료
         </p>
         <button
           onClick={handleClean}
-          className="w-full rounded-2xl bg-black py-8 text-3xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 sm:text-4xl"
+          className="w-full rounded-2xl bg-black py-5 text-2xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 sm:text-3xl"
         >
           불필요한 공백/줄바꿈 1초 정리
         </button>
-        <p className="text-center text-sm font-bold tracking-widest text-zinc-400">
+        <p className="text-center text-base font-bold tracking-widest text-zinc-400">
           무료
         </p>
 
-        <p className="text-center text-base text-zinc-500">
+        <p className="text-center text-lg text-zinc-500">
           블로그 원고, 문자 메시지, 보고서 정리에 사용하세요
         </p>
 
-        <p className="text-center text-sm font-bold tracking-widest text-yellow-600">
+        <p className="text-center text-base font-bold tracking-widest text-yellow-600">
           하루 3회 무료 체험 / 1회 결제로 평생 무제한
         </p>
-        <p className="text-center text-sm font-semibold text-zinc-500">
+        <p className="text-center text-base font-semibold text-zinc-500">
           오늘 남은 무료 횟수: {remaining === null ? "-" : `${remaining}회`}
         </p>
         <button
           onClick={handlePremiumClick}
           disabled={isCorrecting}
-          className="w-full rounded-2xl bg-yellow-400 py-8 text-2xl font-extrabold text-black shadow-lg transition active:scale-95 sm:text-3xl"
+          className="w-full rounded-2xl bg-yellow-400 py-5 text-xl font-extrabold text-black shadow-lg transition active:scale-95 sm:text-2xl"
         >
           {isCorrecting
             ? "교정 중..."
