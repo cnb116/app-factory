@@ -143,6 +143,10 @@ export default function Home() {
           </button>
         </div>
 
+        <p className="text-center text-lg text-zinc-500">
+          블로그 원고, 문자 메시지, 보고서 정리에 사용하세요
+        </p>
+
         <button
           onClick={handleCopy}
           disabled={text.trim() === ""}
@@ -151,13 +155,6 @@ export default function Home() {
           {copied ? "복사됨! ✓" : "정리된 글 복사하기"}
         </button>
 
-        <p className="text-center text-lg text-zinc-500">
-          블로그 원고, 문자 메시지, 보고서 정리에 사용하세요
-        </p>
-
-        <p className="text-center text-base font-bold tracking-widest text-yellow-600">
-          하루 3회 무료 체험 / 1회 결제로 평생 무제한
-        </p>
         <p className="text-center text-base font-semibold text-zinc-500">
           오늘 남은 무료 횟수: {remaining === null ? "-" : `${remaining}회`}
         </p>
