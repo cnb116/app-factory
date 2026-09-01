@@ -21,13 +21,19 @@ export default function Home() {
   }, [text]);
 
   const handleClean = () => {
-    const cleaned = text
-      .split("\n")
-      .map((line) => line.replace(/[ \t]+/g, " ").trim())
-      .join("\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-    setText(cleaned);
+    const paragraphs = text
+      .replace(/\r\n/g, "\n")
+      .split(/\n\s*\n/)
+      .map((paragraph) =>
+        paragraph
+          .split("\n")
+          .map((line) => line.replace(/[ \t]+/g, " ").trim())
+          .filter((line) => line.length > 0)
+          .join(" ")
+      )
+      .filter((paragraph) => paragraph.length > 0);
+
+    setText(paragraphs.join("\n\n"));
   };
 
   const handleCopy = async () => {
@@ -125,12 +131,17 @@ export default function Home() {
           </div>
         </div>
 
-        <button
-          onClick={handleClean}
-          className="w-full rounded-2xl bg-black py-5 text-2xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 sm:text-3xl"
-        >
-          불필요한 공백/줄바꿈 1초 정리
-        </button>
+        <div className="relative w-full">
+          <span className="absolute -top-2 -left-2 z-10 rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-white shadow">
+            FREE
+          </span>
+          <button
+            onClick={handleClean}
+            className="w-full rounded-2xl bg-black py-5 text-2xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 sm:text-3xl"
+          >
+            불필요한 공백/줄바꿈 1초 정리
+          </button>
+        </div>
 
         <button
           onClick={handleCopy}
@@ -150,15 +161,20 @@ export default function Home() {
         <p className="text-center text-base font-semibold text-zinc-500">
           오늘 남은 무료 횟수: {remaining === null ? "-" : `${remaining}회`}
         </p>
-        <button
-          onClick={handlePremiumClick}
-          disabled={isCorrecting}
-          className="w-full rounded-2xl bg-yellow-400 py-5 text-xl font-extrabold text-black shadow-lg transition active:scale-95 sm:text-2xl"
-        >
-          {isCorrecting
-            ? "교정 중..."
-            : "✨ AI 맞춤법 교정 평생 소장 (1회 결제 3,900원)"}
-        </button>
+        <div className="relative w-full">
+          <span className="absolute -top-2 -left-2 z-10 rounded-full bg-black px-2 py-0.5 text-xs font-bold text-white shadow">
+            유료
+          </span>
+          <button
+            onClick={handlePremiumClick}
+            disabled={isCorrecting}
+            className="w-full rounded-2xl bg-yellow-400 py-5 text-xl font-extrabold text-black shadow-lg transition active:scale-95 sm:text-2xl"
+          >
+            {isCorrecting
+              ? "교정 중..."
+              : "✨ AI 맞춤법 교정 평생 소장 (1회 결제 3,900원)"}
+          </button>
+        </div>
       </div>
     </div>
   );
