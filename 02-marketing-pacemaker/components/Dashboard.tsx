@@ -57,6 +57,8 @@ export default function Dashboard({
           community_character: campaign.community_character,
           item_description: campaign.item_description,
           nickname: campaign.nickname,
+          persona_role: campaign.persona_role,
+          persona_tone: campaign.persona_tone,
           day: targetMission.day_number,
           phase: scenarioDay.phase,
           mission_title: targetMission.title,

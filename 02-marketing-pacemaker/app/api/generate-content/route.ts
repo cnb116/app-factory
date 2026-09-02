@@ -7,6 +7,8 @@ interface RequestBody {
   community_character: string;
   item_description: string;
   nickname: string;
+  persona_role?: string;
+  persona_tone?: string;
   day: number;
   phase: string;
   mission_title: string;
@@ -31,6 +33,8 @@ export async function POST(request: NextRequest) {
     community_character,
     item_description,
     nickname,
+    persona_role,
+    persona_tone,
     day,
     phase,
     mission_title,
@@ -51,8 +55,12 @@ export async function POST(request: NextRequest) {
   }
 
   const channelLabel = CHANNEL_LABEL[channel_type as ChannelType] ?? channel_type;
+  const personaLine =
+    persona_role && persona_tone
+      ? `\n너의 페르소나: ${persona_role} (${persona_tone})`
+      : "";
 
-  const prompt = `너는 ${channelLabel} 커뮤니티에서 활동하는 일반 회원 "${nickname}"이다.
+  const prompt = `너는 ${channelLabel} 커뮤니티에서 활동하는 일반 회원 "${nickname}"이다.${personaLine}
 이 커뮤니티의 성격: ${community_character}
 내가 나중에 자연스럽게 알리고 싶은 아이템: ${item_description}
 
