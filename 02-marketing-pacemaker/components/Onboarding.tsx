@@ -150,6 +150,8 @@ export default function Onboarding({
         persona_tone: group.persona_tone,
         current_day: 1,
         status: "ACTIVE",
+        current_streak: 0,
+        longest_streak: 0,
         created_at: group.created_at,
       };
     });

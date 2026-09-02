@@ -51,7 +51,12 @@ function migrateLegacyIfNeeded(): void {
       created_at: legacy.created_at ?? new Date().toISOString(),
     };
 
-    const campaign: Campaign = { ...legacy, group_id: group.id };
+    const campaign: Campaign = {
+      ...legacy,
+      group_id: group.id,
+      current_streak: legacy.current_streak ?? 0,
+      longest_streak: legacy.longest_streak ?? 0,
+    };
 
     writeJSON(GROUP_KEY, group);
     writeJSON(CAMPAIGNS_KEY, [campaign]);

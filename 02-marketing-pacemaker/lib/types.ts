@@ -23,6 +23,8 @@ export interface Campaign {
   persona_tone: string;
   current_day: number;
   status: CampaignStatus;
+  current_streak: number;
+  longest_streak: number;
   created_at: string;
 }
 
@@ -55,6 +57,7 @@ export interface DailyMission {
   instruction: string;
   generated_content: string;
   is_completed: boolean;
+  completed_at?: string;
 }
 
 export const CHANNEL_LABEL: Record<ChannelType, string> = {

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Campaign, DailyMission, SHORT_CHANNEL_LABEL } from "@/lib/types";
 import { getScenarioDay } from "@/lib/scenario";
-import { getMission, upsertMission } from "@/lib/storage";
+import { getMission, loadMissions, upsertMission } from "@/lib/storage";
+import { computeCurrentStreak, getLocalDateKey } from "@/lib/streak";
 
 export default function ChannelCard({
   campaign,
@@ -121,22 +122,45 @@ export default function ChannelCard({
   const handleCompleteMission = () => {
     if (!mission) return;
 
-    const completedMission: DailyMission = { ...mission, is_completed: true };
+    const completedMission: DailyMission = {
+      ...mission,
+      is_completed: true,
+      completed_at: getLocalDateKey(),
+    };
     upsertMission(completedMission);
 
-    onCampaignChange({ ...campaign, current_day: campaign.current_day + 1 });
+    const newStreak = computeCurrentStreak(loadMissions(campaign.id));
+
+    onCampaignChange({
+      ...campaign,
+      current_day: campaign.current_day + 1,
+      current_streak: newStreak,
+      longest_streak: Math.max(campaign.longest_streak ?? 0, newStreak),
+    });
   };
 
   const scenarioDay = getScenarioDay(campaign.current_day);
   const channelBadge = SHORT_CHANNEL_LABEL[campaign.channel_type];
+  const streak = computeCurrentStreak(loadMissions(campaign.id));
 
   return (
     <div className={compact ? "rounded-2xl border-2 border-black p-3" : "flex flex-col gap-6"}>
-      <div className={compact ? "rounded-xl bg-black px-3 py-3 text-center" : "rounded-2xl bg-black px-4 py-4 text-center"}>
-        <p className={compact ? "text-base font-bold text-yellow-400 sm:text-lg" : "text-lg font-bold text-yellow-400 sm:text-2xl"}>
-          [{campaign.title}] {compact ? `(${channelBadge}) ` : ""}침투 D+{campaign.current_day}일차 : {scenarioDay.title}
-        </p>
-        <p className="mt-1 text-sm font-medium text-zinc-300">단계: {scenarioDay.phase}</p>
+      <div className="relative">
+        {streak >= 2 && (
+          <span
+            className={`absolute -top-2 -right-2 z-10 rounded-full px-2 py-0.5 text-xs font-bold shadow ${
+              streak >= 3 ? "bg-yellow-400 text-black" : "bg-zinc-200 text-zinc-700"
+            }`}
+          >
+            {streak >= 3 ? `🔥 D+${streak}일 연속 실행 중!` : `${streak}일째`}
+          </span>
+        )}
+        <div className={compact ? "rounded-xl bg-black px-3 py-3 text-center" : "rounded-2xl bg-black px-4 py-4 text-center"}>
+          <p className={compact ? "text-base font-bold text-yellow-400 sm:text-lg" : "text-lg font-bold text-yellow-400 sm:text-2xl"}>
+            [{campaign.title}] {compact ? `(${channelBadge}) ` : ""}침투 D+{campaign.current_day}일차 : {scenarioDay.title}
+          </p>
+          <p className="mt-1 text-sm font-medium text-zinc-300">단계: {scenarioDay.phase}</p>
+        </div>
       </div>
 
       <div className={compact ? "mt-3 rounded-xl border-2 border-zinc-200 p-3" : "rounded-2xl border-2 border-black p-4"}>
