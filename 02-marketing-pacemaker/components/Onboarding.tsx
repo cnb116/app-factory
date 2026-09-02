@@ -3,12 +3,12 @@
 import { useState } from "react";
 import {
   Campaign,
+  CampaignGroup,
   ChannelType,
-  CHANNEL_LABEL,
   ITEM_CATEGORY_OPTIONS,
   PersonaOption,
 } from "@/lib/types";
-import { saveCampaign } from "@/lib/storage";
+import { saveCampaigns, saveGroup } from "@/lib/storage";
 
 const CHANNEL_OPTIONS: { value: ChannelType; label: string; hint: string }[] = [
   { value: "CAFE", label: "네이버 카페", hint: "게시글·댓글 중심" },
@@ -16,19 +16,27 @@ const CHANNEL_OPTIONS: { value: ChannelType; label: string; hint: string }[] = [
   { value: "OPENCHAT", label: "오픈채팅", hint: "실시간 대화 중심" },
 ];
 
+interface ChannelDraft {
+  name: string;
+  url: string;
+  character: string;
+}
+
+const EMPTY_DRAFT: ChannelDraft = { name: "", url: "", character: "" };
+
+// Wizard steps: 0 channel select, 1 per-channel info loop, 2 persona, 3 nickname, 4 item category
 const TOTAL_STEPS = 5;
 
 export default function Onboarding({
   onCreated,
 }: {
-  onCreated: (campaign: Campaign) => void;
+  onCreated: (group: CampaignGroup, campaigns: Campaign[]) => void;
 }) {
   const [step, setStep] = useState(0);
 
-  const [channelType, setChannelType] = useState<ChannelType | null>(null);
-  const [communityName, setCommunityName] = useState("");
-  const [channelUrl, setChannelUrl] = useState("");
-  const [communityCharacter, setCommunityCharacter] = useState("");
+  const [selectedChannels, setSelectedChannels] = useState<ChannelType[]>([]);
+  const [channelDrafts, setChannelDrafts] = useState<Record<string, ChannelDraft>>({});
+  const [channelSubIndex, setChannelSubIndex] = useState(0);
 
   const [personaOptions, setPersonaOptions] = useState<PersonaOption[] | null>(null);
   const [isLoadingPersonas, setIsLoadingPersonas] = useState(false);
@@ -41,7 +49,23 @@ export default function Onboarding({
   const [itemCategory, setItemCategory] = useState<string | null>(null);
   const [itemSupplement, setItemSupplement] = useState("");
 
-  const fetchPersonaOptions = async () => {
+  const toggleChannel = (value: ChannelType) => {
+    setSelectedChannels((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
+
+  const currentChannel = selectedChannels[channelSubIndex];
+  const currentDraft = channelDrafts[currentChannel] ?? EMPTY_DRAFT;
+
+  const updateCurrentDraft = (patch: Partial<ChannelDraft>) => {
+    setChannelDrafts((prev) => ({
+      ...prev,
+      [currentChannel]: { ...(prev[currentChannel] ?? EMPTY_DRAFT), ...patch },
+    }));
+  };
+
+  const fetchPersonaOptions = async (basisCharacter: string) => {
     setIsLoadingPersonas(true);
     setPersonaOptions(null);
     try {
@@ -49,26 +73,17 @@ export default function Onboarding({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          channel_type: channelType,
-          community_character: communityCharacter,
+          channel_type: selectedChannels[0],
+          community_character: basisCharacter,
         }),
       });
       const data = await response.json();
-      if (Array.isArray(data.personas)) {
-        setPersonaOptions(data.personas);
-      } else {
-        setPersonaOptions([]);
-      }
+      setPersonaOptions(Array.isArray(data.personas) ? data.personas : []);
     } catch {
       setPersonaOptions([]);
     } finally {
       setIsLoadingPersonas(false);
     }
-  };
-
-  const goToStep2 = () => {
-    setStep(2);
-    void fetchPersonaOptions();
   };
 
   const selectPersona = (option: PersonaOption) => {
@@ -80,40 +95,68 @@ export default function Onboarding({
   const selectedCategory = ITEM_CATEGORY_OPTIONS.find((c) => c.value === itemCategory);
   const needsSupplement = itemCategory === "ETC";
 
-  const step0Valid = channelType !== null;
-  const step1Valid =
-    communityName.trim() !== "" &&
-    channelUrl.trim() !== "" &&
-    communityCharacter.trim() !== "";
+  const step0Valid = selectedChannels.length > 0;
+  const channelStepValid = currentDraft.name.trim() !== "" && currentDraft.url.trim() !== "" && currentDraft.character.trim() !== "";
   const step2Valid = personaRole.trim() !== "" && personaTone.trim() !== "";
   const step3Valid = nickname.trim() !== "";
-  const step4Valid =
-    itemCategory !== null && (!needsSupplement || itemSupplement.trim() !== "");
+  const step4Valid = itemCategory !== null && (!needsSupplement || itemSupplement.trim() !== "");
+
+  const goNextFromChannelStep = () => {
+    if (channelSubIndex < selectedChannels.length - 1) {
+      setChannelSubIndex((i) => i + 1);
+      return;
+    }
+    // last channel filled — move to persona, based on the first channel's character
+    setStep(2);
+    void fetchPersonaOptions(channelDrafts[selectedChannels[0]]?.character ?? currentDraft.character);
+  };
+
+  const goPrevFromChannelStep = () => {
+    if (channelSubIndex > 0) {
+      setChannelSubIndex((i) => i - 1);
+      return;
+    }
+    setStep(0);
+  };
 
   const handleSubmit = () => {
-    if (!channelType || !selectedCategory) return;
+    if (!selectedCategory || selectedChannels.length === 0) return;
 
     const item_description = needsSupplement
       ? itemSupplement.trim()
       : `${selectedCategory.label}${itemSupplement.trim() ? ` — ${itemSupplement.trim()}` : ""}`;
 
-    const campaign: Campaign = {
+    const group: CampaignGroup = {
       id: crypto.randomUUID(),
-      title: communityName.trim(),
-      item_description,
-      channel_type: channelType,
-      channel_url: channelUrl.trim(),
-      community_character: communityCharacter.trim(),
       nickname: nickname.trim(),
+      item_description,
       persona_role: personaRole.trim(),
       persona_tone: personaTone.trim(),
-      current_day: 1,
-      status: "ACTIVE",
       created_at: new Date().toISOString(),
     };
 
-    saveCampaign(campaign);
-    onCreated(campaign);
+    const campaigns: Campaign[] = selectedChannels.map((channelType) => {
+      const draft = channelDrafts[channelType] ?? EMPTY_DRAFT;
+      return {
+        id: crypto.randomUUID(),
+        group_id: group.id,
+        title: draft.name.trim(),
+        item_description,
+        channel_type: channelType,
+        channel_url: draft.url.trim(),
+        community_character: draft.character.trim(),
+        nickname: group.nickname,
+        persona_role: group.persona_role,
+        persona_tone: group.persona_tone,
+        current_day: 1,
+        status: "ACTIVE",
+        created_at: group.created_at,
+      };
+    });
+
+    saveGroup(group);
+    saveCampaigns(campaigns);
+    onCreated(group, campaigns);
   };
 
   return (
@@ -129,28 +172,40 @@ export default function Onboarding({
         {step === 0 && (
           <div className="flex flex-col gap-4">
             <label className="text-lg font-bold text-black">
-              어떤 커뮤니티에서 시작할까요?
+              어떤 커뮤니티에서 시작할까요? (여러 개 선택 가능)
             </label>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {CHANNEL_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setChannelType(opt.value)}
-                  className={`flex min-h-14 flex-col items-center justify-center rounded-xl border-2 px-2 py-3 text-center transition ${
-                    channelType === opt.value
-                      ? "border-black bg-black text-yellow-400"
-                      : "border-zinc-300 bg-white text-black"
-                  }`}
-                >
-                  <span className="text-lg font-bold">{opt.label}</span>
-                  <span className="text-sm opacity-80">{opt.hint}</span>
-                </button>
-              ))}
+              {CHANNEL_OPTIONS.map((opt) => {
+                const selected = selectedChannels.includes(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggleChannel(opt.value)}
+                    className={`flex min-h-14 flex-col items-center justify-center rounded-xl border-2 px-2 py-3 text-center transition ${
+                      selected
+                        ? "border-black bg-black text-yellow-400"
+                        : "border-zinc-300 bg-white text-black"
+                    }`}
+                  >
+                    <span className="text-lg font-bold">
+                      {selected ? "✓ " : ""}
+                      {opt.label}
+                    </span>
+                    <span className="text-sm opacity-80">{opt.hint}</span>
+                  </button>
+                );
+              })}
             </div>
+            <p className="text-sm text-zinc-500">
+              동시에 운영할 채널을 모두 선택하세요. 하나만 골라도 됩니다.
+            </p>
             <button
               type="button"
-              onClick={() => setStep(1)}
+              onClick={() => {
+                setChannelSubIndex(0);
+                setStep(1);
+              }}
               disabled={!step0Valid}
               className="min-h-14 w-full rounded-2xl bg-black py-4 text-xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 disabled:opacity-40"
             >
@@ -159,15 +214,20 @@ export default function Onboarding({
           </div>
         )}
 
-        {step === 1 && (
+        {step === 1 && currentChannel && (
           <div className="flex flex-col gap-4">
+            <p className="text-base font-bold text-zinc-500">
+              채널 정보 입력 ({channelSubIndex + 1} / {selectedChannels.length}) ·{" "}
+              {CHANNEL_OPTIONS.find((c) => c.value === currentChannel)?.label}
+            </p>
+
             <div className="flex flex-col gap-2">
               <label className="text-lg font-bold text-black">
                 커뮤니티 이름 (예: OO맘카페)
               </label>
               <input
-                value={communityName}
-                onChange={(e) => setCommunityName(e.target.value)}
+                value={currentDraft.name}
+                onChange={(e) => updateCurrentDraft({ name: e.target.value })}
                 placeholder="커뮤니티 이름을 입력하세요"
                 className="min-h-14 w-full rounded-xl border-2 border-black px-4 text-lg text-black focus:outline-none focus:ring-4 focus:ring-yellow-400"
               />
@@ -176,8 +236,8 @@ export default function Onboarding({
             <div className="flex flex-col gap-2">
               <label className="text-lg font-bold text-black">커뮤니티 링크</label>
               <input
-                value={channelUrl}
-                onChange={(e) => setChannelUrl(e.target.value)}
+                value={currentDraft.url}
+                onChange={(e) => updateCurrentDraft({ url: e.target.value })}
                 placeholder="https://..."
                 className="min-h-14 w-full rounded-xl border-2 border-black px-4 text-lg text-black focus:outline-none focus:ring-4 focus:ring-yellow-400"
               />
@@ -186,31 +246,33 @@ export default function Onboarding({
             <div className="flex flex-col gap-2">
               <label className="text-lg font-bold text-black">커뮤니티 성격</label>
               <textarea
-                value={communityCharacter}
-                onChange={(e) => setCommunityCharacter(e.target.value)}
+                value={currentDraft.character}
+                onChange={(e) => updateCurrentDraft({ character: e.target.value })}
                 placeholder="예: 30~40대 육아맘 위주, 정보 공유가 활발하고 다정한 분위기"
                 className="min-h-24 w-full rounded-xl border-2 border-black p-4 text-lg text-black focus:outline-none focus:ring-4 focus:ring-yellow-400"
               />
-              <p className="text-sm text-zinc-500">
-                이 내용을 바탕으로 다음 단계에서 AI가 어울리는 페르소나를 추천해드려요
-              </p>
+              {channelSubIndex === selectedChannels.length - 1 && (
+                <p className="text-sm text-zinc-500">
+                  다음 단계에서 이 정보를 바탕으로 AI가 어울리는 페르소나를 추천해드려요
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setStep(0)}
+                onClick={goPrevFromChannelStep}
                 className="min-h-14 w-1/3 rounded-2xl border-2 border-black py-4 text-lg font-bold text-black transition active:scale-95"
               >
                 이전
               </button>
               <button
                 type="button"
-                onClick={goToStep2}
-                disabled={!step1Valid}
+                onClick={goNextFromChannelStep}
+                disabled={!channelStepValid}
                 className="min-h-14 w-2/3 rounded-2xl bg-black py-4 text-xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 disabled:opacity-40"
               >
-                다음
+                {channelSubIndex < selectedChannels.length - 1 ? "다음 채널" : "다음"}
               </button>
             </div>
           </div>
@@ -219,10 +281,10 @@ export default function Onboarding({
         {step === 2 && (
           <div className="flex flex-col gap-4">
             <label className="text-lg font-bold text-black">
-              이 커뮤니티에서 어떤 사람으로 보이면 좋을까요?
+              여러 채널에 공통으로 쓸 페르소나는 어떤 게 좋을까요?
             </label>
             <p className="text-base text-zinc-500">
-              AI가 추천한 페르소나 중 하나를 탭 하나로 선택하세요
+              AI가 추천한 페르소나 중 하나를 탭 하나로 선택하세요. 모든 채널에 동일하게 적용돼요.
             </p>
 
             {isLoadingPersonas && (
@@ -293,7 +355,10 @@ export default function Onboarding({
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => {
+                  setChannelSubIndex(selectedChannels.length - 1);
+                  setStep(1);
+                }}
                 className="min-h-14 w-1/3 rounded-2xl border-2 border-black py-4 text-lg font-bold text-black transition active:scale-95"
               >
                 이전
@@ -313,10 +378,11 @@ export default function Onboarding({
         {step === 3 && (
           <div className="flex flex-col gap-4">
             <label className="text-lg font-bold text-black">활동 닉네임</label>
+            <p className="text-sm text-zinc-500">모든 채널에 공통으로 사용돼요</p>
             <input
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              placeholder="이 커뮤니티에서 쓸 닉네임"
+              placeholder="커뮤니티에서 쓸 닉네임"
               className="min-h-14 w-full rounded-xl border-2 border-black px-4 text-lg text-black focus:outline-none focus:ring-4 focus:ring-yellow-400"
             />
 
