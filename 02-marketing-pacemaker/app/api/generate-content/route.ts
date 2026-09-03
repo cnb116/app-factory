@@ -15,11 +15,12 @@ interface RequestBody {
   mission_instruction: string;
 }
 
+function buildFallbackContent(missionTitle: string, missionInstruction: string): string {
+  return `[자동 생성 실패 - 기본 문구입니다]\n${missionInstruction}\n\n위 가이드를 참고해서 직접 자연스럽게 작성해보세요. (미션: ${missionTitle})`;
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = getGeminiApiKey();
-  if (!apiKey) {
-    return NextResponse.json({ error: "API 키가 설정되지 않았습니다." }, { status: 500 });
-  }
 
   let body: Partial<RequestBody>;
   try {
@@ -52,6 +53,11 @@ export async function POST(request: NextRequest) {
     !mission_instruction
   ) {
     return NextResponse.json({ error: "필수 정보가 누락되었습니다." }, { status: 400 });
+  }
+
+  if (!apiKey) {
+    console.error("[generate-content] GEMINI_API_KEY is not set");
+    return NextResponse.json({ content: buildFallbackContent(mission_title, mission_instruction) });
   }
 
   const channelLabel = CHANNEL_LABEL[channel_type as ChannelType] ?? channel_type;
@@ -88,18 +94,22 @@ export async function POST(request: NextRequest) {
     );
 
     if (!response.ok) {
-      return NextResponse.json({ error: "문구 생성에 실패했습니다." }, { status: 502 });
+      const errBody = await response.text();
+      console.error("[generate-content] Gemini non-OK response", response.status, errBody);
+      return NextResponse.json({ content: buildFallbackContent(mission_title, mission_instruction) });
     }
 
     const data = await response.json();
     const generated = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (typeof generated !== "string" || generated.trim() === "") {
-      return NextResponse.json({ error: "생성된 문구를 받지 못했습니다." }, { status: 502 });
+      console.error("[generate-content] no text in candidates", JSON.stringify(data));
+      return NextResponse.json({ content: buildFallbackContent(mission_title, mission_instruction) });
     }
 
     return NextResponse.json({ content: generated.trim() });
-  } catch {
-    return NextResponse.json({ error: "잠시 후 다시 시도해주세요." }, { status: 500 });
+  } catch (err) {
+    console.error("[generate-content] caught exception", err);
+    return NextResponse.json({ content: buildFallbackContent(mission_title, mission_instruction) });
   }
 }

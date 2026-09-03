@@ -27,7 +27,7 @@ export default function Dashboard({
       <div className="flex min-h-screen flex-col items-center bg-white px-4 py-8 sm:px-8">
         <div className="flex w-full max-w-xl flex-col gap-6">
           <ChannelCard campaign={campaign} onCampaignChange={handleCampaignChange} />
-          <Timeline currentDay={campaign.current_day} missions={missions} />
+          <Timeline campaign={campaign} missions={missions} onCampaignChange={handleCampaignChange} />
         </div>
       </div>
     );

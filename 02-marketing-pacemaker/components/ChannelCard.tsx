@@ -75,9 +75,10 @@ export default function ChannelCard({
       upsertMission(updated);
       setMission(updated);
     } catch {
-      alert(
-        `[${SHORT_CHANNEL_LABEL[campaign.channel_type]}] 문구 생성에 실패했습니다. 잠시 후 다시 시도해주세요`
-      );
+      const fallback = `[자동 생성 실패 - 기본 문구입니다]\n${targetMission.instruction}\n\n위 가이드를 참고해서 직접 자연스럽게 작성해보세요.`;
+      const updated: DailyMission = { ...targetMission, generated_content: fallback };
+      upsertMission(updated);
+      setMission(updated);
     } finally {
       setIsGenerating(false);
     }

@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
     );
 
     if (!response.ok) {
+      const errBody = await response.text();
+      console.error("[generate-persona-options] Gemini non-OK response", response.status, errBody);
       return NextResponse.json({ personas: FALLBACK_PERSONAS });
     }
 
@@ -67,6 +69,7 @@ export async function POST(request: NextRequest) {
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (typeof text !== "string") {
+      console.error("[generate-persona-options] no text in candidates", JSON.stringify(data));
       return NextResponse.json({ personas: FALLBACK_PERSONAS });
     }
 
@@ -82,11 +85,13 @@ export async function POST(request: NextRequest) {
           typeof (p as PersonaOption).tone === "string"
       )
     ) {
+      console.error("[generate-persona-options] parsed shape invalid", JSON.stringify(parsed));
       return NextResponse.json({ personas: FALLBACK_PERSONAS });
     }
 
     return NextResponse.json({ personas: (parsed as PersonaOption[]).slice(0, 4) });
-  } catch {
+  } catch (err) {
+    console.error("[generate-persona-options] caught exception", err);
     return NextResponse.json({ personas: FALLBACK_PERSONAS });
   }
 }
