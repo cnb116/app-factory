@@ -1,0 +1,29 @@
+{
+  "name": "마케팅 페이스메이커",
+  "short_name": "페이스메이커",
+  "description": "커뮤니티 침투 마케팅용 1:1 데일리 코치 — 14일 시나리오 기반 미션 + 복붙 문구 자동 생성",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
