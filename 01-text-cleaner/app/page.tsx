@@ -156,7 +156,7 @@ export default function Home() {
         <button
           onClick={handlePremiumClick}
           disabled={isCorrecting}
-          className="flex w-full items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-5 py-3 text-lg text-zinc-600 transition hover:border-zinc-400 active:scale-95 disabled:opacity-50 sm:text-xl"
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-amber-400 bg-transparent px-5 py-3 text-lg text-amber-700 transition hover:border-amber-500 active:scale-95 disabled:opacity-50 sm:text-xl"
         >
           <span aria-hidden>🔒</span>
           <span>
