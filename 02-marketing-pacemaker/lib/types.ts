@@ -3,10 +3,10 @@ export type CampaignStatus = "ACTIVE" | "PAUSED" | "COMPLETED";
 
 export interface CampaignGroup {
   id: string;
-  nickname: string;
-  item_description: string;
-  persona_role: string;
-  persona_tone: string;
+  nickname?: string;
+  item_description?: string;
+  persona_role?: string;
+  persona_tone?: string;
   created_at: string;
 }
 
@@ -14,13 +14,13 @@ export interface Campaign {
   id: string;
   group_id: string;
   title: string;
-  item_description: string;
+  item_description?: string;
   channel_type: ChannelType;
   channel_url: string;
   community_character: string;
-  nickname: string;
-  persona_role: string;
-  persona_tone: string;
+  nickname?: string;
+  persona_role?: string;
+  persona_tone?: string;
   current_day: number;
   status: CampaignStatus;
   current_streak: number;

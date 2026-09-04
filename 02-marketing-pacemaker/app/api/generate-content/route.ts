@@ -5,7 +5,7 @@ import { CHANNEL_LABEL, ChannelType } from "@/lib/types";
 interface RequestBody {
   channel_type: ChannelType;
   community_character: string;
-  item_description: string;
+  item_description?: string;
   nickname: string;
   persona_role?: string;
   persona_tone?: string;
@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
   if (
     !channel_type ||
     !community_character ||
-    !item_description ||
     !nickname ||
     !day ||
     !phase ||
@@ -65,10 +64,12 @@ export async function POST(request: NextRequest) {
     persona_role && persona_tone
       ? `\n너의 페르소나: ${persona_role} (${persona_tone})`
       : "";
+  const itemLine = item_description
+    ? `\n내가 나중에 자연스럽게 알리고 싶은 아이템: ${item_description}`
+    : "";
 
   const prompt = `너는 ${channelLabel} 커뮤니티에서 활동하는 일반 회원 "${nickname}"이다.${personaLine}
-이 커뮤니티의 성격: ${community_character}
-내가 나중에 자연스럽게 알리고 싶은 아이템: ${item_description}
+이 커뮤니티의 성격: ${community_character}${itemLine}
 
 오늘은 침투 D+${day}일차, 단계는 "${phase}", 미션은 "${mission_title}"이다.
 미션 가이드: ${mission_instruction}

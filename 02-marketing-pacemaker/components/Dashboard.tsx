@@ -2,6 +2,7 @@
 
 import { Campaign, CampaignGroup, SHORT_CHANNEL_LABEL } from "@/lib/types";
 import { loadMissions, upsertCampaign } from "@/lib/storage";
+import CampaignSettings from "./CampaignSettings";
 import ChannelCard from "./ChannelCard";
 import Timeline from "./Timeline";
 
@@ -27,6 +28,7 @@ export default function Dashboard({
       <div className="flex min-h-screen flex-col items-center bg-white px-4 py-8 sm:px-8">
         <div className="flex w-full max-w-xl flex-col gap-6">
           <ChannelCard campaign={campaign} onCampaignChange={handleCampaignChange} />
+          <CampaignSettings campaign={campaign} onCampaignChange={handleCampaignChange} />
           <Timeline campaign={campaign} missions={missions} onCampaignChange={handleCampaignChange} />
         </div>
       </div>
