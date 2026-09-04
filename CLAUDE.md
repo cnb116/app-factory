@@ -11,7 +11,7 @@
 
 3. 폴더 규칙:
    - 신규 앱은 반드시 app-factory/[2자리번호]-[영문소문자-하이픈]/ 폴더 안에 생성
-   - 루트에 직접 파일 생성 금지 (app_inventory.md, CLAUDE.md 제외)
+   - 루트에 직접 파일 생성 금지 (app_inventory.md, CLAUDE.md, 전체 앱 공통 표준 문서(예: PREMIUM_UI_STANDARD.md) 제외)
 
 4. 대장님에게 수동 입력 요구 금지. 모든 기록은 작업자(Claude)가 직접 확인 후 기록.
 
