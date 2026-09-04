@@ -131,17 +131,12 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="relative w-full">
-          <span className="absolute -top-2 -left-2 z-10 rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-white shadow">
-            FREE
-          </span>
-          <button
-            onClick={handleClean}
-            className="w-full rounded-2xl bg-black py-5 text-2xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 sm:text-3xl"
-          >
-            불필요한 공백/줄바꿈 1초 정리
-          </button>
-        </div>
+        <button
+          onClick={handleClean}
+          className="w-full rounded-2xl bg-black py-5 text-2xl font-extrabold text-yellow-400 shadow-lg transition active:scale-95 sm:text-3xl"
+        >
+          불필요한 공백/줄바꿈 1초 정리
+        </button>
 
         <p className="text-center text-lg text-zinc-500">
           블로그 원고, 문자 메시지, 보고서 정리에 사용하세요
@@ -156,22 +151,20 @@ export default function Home() {
         </button>
 
         <p className="text-center text-base font-semibold text-zinc-500">
-          오늘 남은 무료 횟수: {remaining === null ? "-" : `${remaining}회`}
+          오늘 남은 횟수: {remaining === null ? "-" : `${remaining}회`}
         </p>
-        <div className="relative w-full">
-          <span className="absolute -top-2 -left-2 z-10 rounded-full bg-black px-2 py-0.5 text-xs font-bold text-white shadow">
-            유료
-          </span>
-          <button
-            onClick={handlePremiumClick}
-            disabled={isCorrecting}
-            className="w-full rounded-2xl bg-yellow-400 py-5 text-xl font-extrabold text-black shadow-lg transition active:scale-95 sm:text-2xl"
-          >
+        <button
+          onClick={handlePremiumClick}
+          disabled={isCorrecting}
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-zinc-300 bg-white px-5 py-3 text-lg text-zinc-600 transition hover:border-zinc-400 active:scale-95 disabled:opacity-50 sm:text-xl"
+        >
+          <span aria-hidden>🔒</span>
+          <span>
             {isCorrecting
               ? "교정 중..."
-              : "✨ AI 맞춤법 교정 평생 소장 (1회 결제 3,900원)"}
-          </button>
-        </div>
+              : "프리미엄 확장팩 (AI 맞춤법 교정) — 3,900원"}
+          </span>
+        </button>
       </div>
     </div>
   );
