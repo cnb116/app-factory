@@ -9,6 +9,7 @@ import {
   PersonaOption,
 } from "@/lib/types";
 import { saveCampaigns, saveGroup } from "@/lib/storage";
+import PremiumCapsule from "@/components/PremiumCapsule";
 
 const CHANNEL_OPTIONS: { value: ChannelType; label: string; hint: string }[] = [
   { value: "CAFE", label: "네이버 카페", hint: "게시글·댓글 중심" },
@@ -50,9 +51,12 @@ export default function Onboarding({
   const [itemSupplement, setItemSupplement] = useState("");
 
   const toggleChannel = (value: ChannelType) => {
-    setSelectedChannels((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
+    setSelectedChannels((prev) => {
+      if (prev.includes(value)) return prev.filter((v) => v !== value);
+      // 2개 이상 동시 운영은 프리미엄 기능 — 화면에 상시 노출된 캡슐로 안내
+      if (prev.length >= 1) return prev;
+      return [value];
+    });
   };
 
   const currentChannel = selectedChannels[channelSubIndex];
@@ -174,7 +178,7 @@ export default function Onboarding({
         {step === 0 && (
           <div className="flex flex-col gap-4">
             <label className="text-lg font-bold text-black">
-              어떤 커뮤니티에서 시작할까요? (여러 개 선택 가능)
+              어떤 커뮤니티에서 시작할까요?
             </label>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {CHANNEL_OPTIONS.map((opt) => {
@@ -200,8 +204,12 @@ export default function Onboarding({
               })}
             </div>
             <p className="text-sm text-zinc-500">
-              동시에 운영할 채널을 모두 선택하세요. 하나만 골라도 됩니다.
+              지금은 채널 1개로 시작할 수 있어요.
             </p>
+            <PremiumCapsule
+              description="프리미엄 확장팩 (채널 3개 동시 운영)"
+              price="3,900원"
+            />
             <button
               type="button"
               onClick={() => {

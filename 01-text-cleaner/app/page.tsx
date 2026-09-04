@@ -1,17 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { consumeFreeUse, getRemainingFreeUses } from "@/lib/usage";
+import { useMemo, useState } from "react";
+import PremiumCapsule from "@/components/PremiumCapsule";
 
 export default function Home() {
   const [text, setText] = useState("");
-  const [remaining, setRemaining] = useState<number | null>(null);
   const [isCorrecting, setIsCorrecting] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    setRemaining(getRemainingFreeUses());
-  }, []);
 
   const charsWithSpace = text.length;
   const charsNoSpace = useMemo(() => text.replace(/\s/g, "").length, [text]);
@@ -66,12 +61,6 @@ export default function Home() {
   const handlePremiumClick = async () => {
     if (isCorrecting) return;
 
-    const currentRemaining = getRemainingFreeUses();
-    if (currentRemaining <= 0) {
-      alert("결제 준비 중입니다");
-      return;
-    }
-
     if (text.trim() === "") {
       alert("교정할 텍스트를 먼저 입력해주세요");
       return;
@@ -91,7 +80,6 @@ export default function Home() {
       }
 
       setText(data.corrected);
-      setRemaining(consumeFreeUse());
     } catch {
       alert("잠시 후 다시 시도해주세요");
     } finally {
@@ -150,21 +138,14 @@ export default function Home() {
           {copied ? "복사됨! ✓" : "정리된 글 복사하기"}
         </button>
 
-        <p className="text-center text-base font-semibold text-zinc-500">
-          오늘 남은 횟수: {remaining === null ? "-" : `${remaining}회`}
-        </p>
-        <button
+        <PremiumCapsule
+          description="프리미엄 확장팩 (AI 맞춤법 교정 평생 사용)"
+          price="3,900원"
           onClick={handlePremiumClick}
           disabled={isCorrecting}
-          className="flex w-full items-center justify-center gap-2 rounded-full border border-amber-400 bg-transparent px-5 py-3 text-lg text-amber-700 transition hover:border-amber-500 active:scale-95 disabled:opacity-50 sm:text-xl"
-        >
-          <span aria-hidden>🔒</span>
-          <span>
-            {isCorrecting
-              ? "교정 중..."
-              : "프리미엄 확장팩 (AI 맞춤법 교정) — 3,900원"}
-          </span>
-        </button>
+          isLoading={isCorrecting}
+          loadingText="교정 중..."
+        />
       </div>
     </div>
   );
