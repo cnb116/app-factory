@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from "react";
 import PremiumCapsule from "@/components/PremiumCapsule";
+import { DiffToken, diffWords, hasLongDigitRun } from "@/lib/diff";
 
 export default function Home() {
   const [text, setText] = useState("");
   const [isCorrecting, setIsCorrecting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [correctionDiff, setCorrectionDiff] = useState<DiffToken[] | null>(null);
+  const [showNumberWarning, setShowNumberWarning] = useState(false);
 
   const charsWithSpace = text.length;
   const charsNoSpace = useMemo(() => text.replace(/\s/g, "").length, [text]);
@@ -29,6 +32,8 @@ export default function Home() {
       .filter((paragraph) => paragraph.length > 0);
 
     setText(paragraphs.join("\n\n"));
+    setCorrectionDiff(null);
+    setShowNumberWarning(false);
   };
 
   const handleCopy = async () => {
@@ -66,12 +71,13 @@ export default function Home() {
       return;
     }
 
+    const originalText = text;
     setIsCorrecting(true);
     try {
       const response = await fetch("/api/correct-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: originalText }),
       });
       const data = await response.json();
 
@@ -80,6 +86,8 @@ export default function Home() {
       }
 
       setText(data.corrected);
+      setCorrectionDiff(diffWords(originalText, data.corrected));
+      setShowNumberWarning(hasLongDigitRun(data.corrected));
     } catch {
       alert("잠시 후 다시 시도해주세요");
     } finally {
@@ -97,12 +105,35 @@ export default function Home() {
           카톡·메모에서 복사한 지저분한 텍스트, 1초 만에 깔끔하게
         </p>
 
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="카톡에서 복사한 글을 여기에 붙여넣어 보세요"
-          className="h-64 w-full rounded-2xl border-4 border-black p-5 text-2xl leading-relaxed text-black focus:outline-none focus:ring-4 focus:ring-yellow-400 sm:h-80"
-        />
+        {showNumberWarning && correctionDiff && (
+          <p className="text-center text-base font-bold text-amber-600">
+            ⚠️ 숫자는 AI가 놓칠 수 있어요. 다시 한 번 확인해주세요.
+          </p>
+        )}
+
+        {correctionDiff ? (
+          <div
+            onClick={() => setCorrectionDiff(null)}
+            className="h-64 w-full cursor-text overflow-auto whitespace-pre-wrap rounded-2xl border-4 border-black p-5 text-2xl leading-relaxed text-black sm:h-80"
+          >
+            {correctionDiff.map((token, index) =>
+              token.changed ? (
+                <mark key={index} className="bg-yellow-200">
+                  {token.text}
+                </mark>
+              ) : (
+                <span key={index}>{token.text}</span>
+              )
+            )}
+          </div>
+        ) : (
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="카톡에서 복사한 글을 여기에 붙여넣어 보세요"
+            className="h-64 w-full rounded-2xl border-4 border-black p-5 text-2xl leading-relaxed text-black focus:outline-none focus:ring-4 focus:ring-yellow-400 sm:h-80"
+          />
+        )}
 
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="rounded-xl border-2 border-black bg-zinc-50 p-4">
