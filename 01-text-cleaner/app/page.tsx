@@ -22,13 +22,35 @@ export default function Home() {
     const paragraphs = text
       .replace(/\r\n/g, "\n")
       .split(/\n\s*\n/)
-      .map((paragraph) =>
-        paragraph
+      .map((paragraph) => {
+        const lines = paragraph
           .split("\n")
           .map((line) => line.replace(/[ \t]+/g, " ").trim())
-          .filter((line) => line.length > 0)
-          .join(" ")
-      )
+          .filter((line) => line.length > 0);
+
+        // 계좌번호·전화번호처럼 숫자-하이픈 조합이 있는 줄은 독립된 줄로 보존하고,
+        // 그 앞뒤의 일반 문장 줄들만 한 줄로 합친다.
+        const outputLines: string[] = [];
+        let buffer: string[] = [];
+        const flushBuffer = () => {
+          if (buffer.length > 0) {
+            outputLines.push(buffer.join(" "));
+            buffer = [];
+          }
+        };
+
+        for (const line of lines) {
+          if (/\d{2,}-\d/.test(line)) {
+            flushBuffer();
+            outputLines.push(line);
+          } else {
+            buffer.push(line);
+          }
+        }
+        flushBuffer();
+
+        return outputLines.join("\n");
+      })
       .filter((paragraph) => paragraph.length > 0);
 
     setText(paragraphs.join("\n\n"));
