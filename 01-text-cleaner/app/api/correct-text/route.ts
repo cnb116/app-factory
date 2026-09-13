@@ -50,6 +50,8 @@ ${text}`,
     );
 
     if (!response.ok) {
+      const errBody = await response.text();
+      console.error("[correct-text] Gemini non-OK response", response.status, errBody);
       return NextResponse.json({ error: "교정 요청에 실패했습니다." }, { status: 502 });
     }
 
@@ -57,11 +59,13 @@ ${text}`,
     const corrected = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (typeof corrected !== "string" || corrected.trim() === "") {
+      console.error("[correct-text] no text in candidates", JSON.stringify(data));
       return NextResponse.json({ error: "교정 결과를 받지 못했습니다." }, { status: 502 });
     }
 
     return NextResponse.json({ corrected: corrected.trim() });
-  } catch {
+  } catch (err) {
+    console.error("[correct-text] caught exception", err);
     return NextResponse.json({ error: "잠시 후 다시 시도해주세요." }, { status: 500 });
   }
 }
