@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PremiumCapsule from "@/components/PremiumCapsule";
 import { DiffToken, diffWords, hasLongDigitRun } from "@/lib/diff";
+import { consumeFreeUse, getRemainingFreeUses } from "@/lib/usage";
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -10,6 +11,11 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [correctionDiff, setCorrectionDiff] = useState<DiffToken[] | null>(null);
   const [showNumberWarning, setShowNumberWarning] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    setRemaining(getRemainingFreeUses());
+  }, []);
 
   const charsWithSpace = text.length;
   const charsNoSpace = useMemo(() => text.replace(/\s/g, "").length, [text]);
@@ -88,6 +94,12 @@ export default function Home() {
   const handlePremiumClick = async () => {
     if (isCorrecting) return;
 
+    const currentRemaining = getRemainingFreeUses();
+    if (currentRemaining <= 0) {
+      alert("결제 준비 중입니다");
+      return;
+    }
+
     if (text.trim() === "") {
       alert("교정할 텍스트를 먼저 입력해주세요");
       return;
@@ -110,6 +122,7 @@ export default function Home() {
       setText(data.corrected);
       setCorrectionDiff(diffWords(originalText, data.corrected));
       setShowNumberWarning(hasLongDigitRun(data.corrected));
+      setRemaining(consumeFreeUse());
     } catch {
       alert("잠시 후 다시 시도해주세요");
     } finally {
@@ -191,6 +204,9 @@ export default function Home() {
           {copied ? "복사됨! ✓" : "정리된 글 복사하기"}
         </button>
 
+        <p className="text-center text-base font-semibold text-zinc-500">
+          오늘 남은 무료 횟수: {remaining === null ? "-" : `${remaining}회`}
+        </p>
         <PremiumCapsule
           description="프리미엄 확장팩 (AI 맞춤법 교정 평생 사용)"
           price="3,900원"
