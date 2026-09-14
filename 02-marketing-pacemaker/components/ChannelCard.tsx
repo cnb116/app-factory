@@ -18,6 +18,7 @@ export default function ChannelCard({
   const [mission, setMission] = useState<DailyMission | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [generationFailed, setGenerationFailed] = useState(false);
 
   useEffect(() => {
     const scenarioDay = getScenarioDay(campaign.current_day);
@@ -47,6 +48,7 @@ export default function ChannelCard({
 
   const generateContent = async (targetMission: DailyMission) => {
     setIsGenerating(true);
+    setGenerationFailed(false);
     try {
       const scenarioDay = getScenarioDay(targetMission.day_number);
       const response = await fetch("/api/generate-content", {
@@ -75,10 +77,14 @@ export default function ChannelCard({
       upsertMission(updated);
       setMission(updated);
     } catch {
-      const fallback = `[자동 생성 실패 - 기본 문구입니다]\n${targetMission.instruction}\n\n위 가이드를 참고해서 직접 자연스럽게 작성해보세요.`;
-      const updated: DailyMission = { ...targetMission, generated_content: fallback };
-      upsertMission(updated);
-      setMission(updated);
+      setGenerationFailed(true);
+      // 기존에 써둔(또는 이전에 생성된) 문구가 있으면 지우지 않고 그대로 둔다 —
+      // 새로 생성 시도한 이 미션이 원래 비어 있던 경우에만 빈 상태로 확정한다.
+      if (targetMission.generated_content.trim() === "") {
+        const cleared: DailyMission = { ...targetMission, generated_content: "" };
+        upsertMission(cleared);
+        setMission(cleared);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -86,6 +92,7 @@ export default function ChannelCard({
 
   const handleContentEdit = (value: string) => {
     if (!mission) return;
+    setGenerationFailed(false);
     const updated: DailyMission = { ...mission, generated_content: value };
     setMission(updated);
     upsertMission(updated);
@@ -171,6 +178,11 @@ export default function ChannelCard({
         </p>
 
         {!compact && <h2 className="mt-4 text-lg font-bold text-black">복붙용 문구</h2>}
+        {generationFailed && (
+          <p className="mt-2 text-base font-bold text-amber-600">
+            ⚠️ AI 생성에 실패했어요. 직접 작성하거나 다시 시도해주세요.
+          </p>
+        )}
         <textarea
           value={isGenerating ? "문구 생성 중..." : (mission?.generated_content ?? "")}
           onChange={(e) => handleContentEdit(e.target.value)}
@@ -195,7 +207,7 @@ export default function ChannelCard({
         <button
           type="button"
           onClick={handleCopyAndOpen}
-          disabled={isGenerating}
+          disabled={isGenerating || !mission?.generated_content?.trim()}
           className={
             compact
               ? "min-h-14 w-full rounded-xl bg-yellow-400 py-3 text-lg font-extrabold text-black shadow transition active:scale-95 disabled:opacity-40"

@@ -15,10 +15,6 @@ interface RequestBody {
   mission_instruction: string;
 }
 
-function buildFallbackContent(missionTitle: string, missionInstruction: string): string {
-  return `[자동 생성 실패 - 기본 문구입니다]\n${missionInstruction}\n\n위 가이드를 참고해서 직접 자연스럽게 작성해보세요. (미션: ${missionTitle})`;
-}
-
 export async function POST(request: NextRequest) {
   const apiKey = getGeminiApiKey();
 
@@ -56,7 +52,7 @@ export async function POST(request: NextRequest) {
 
   if (!apiKey) {
     console.error("[generate-content] GEMINI_API_KEY is not set");
-    return NextResponse.json({ content: buildFallbackContent(mission_title, mission_instruction) });
+    return NextResponse.json({ error: "AI 생성에 실패했습니다." }, { status: 502 });
   }
 
   const channelLabel = CHANNEL_LABEL[channel_type as ChannelType] ?? channel_type;
@@ -97,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errBody = await response.text();
       console.error("[generate-content] Gemini non-OK response", response.status, errBody);
-      return NextResponse.json({ content: buildFallbackContent(mission_title, mission_instruction) });
+      return NextResponse.json({ error: "AI 생성에 실패했습니다." }, { status: 502 });
     }
 
     const data = await response.json();
@@ -105,12 +101,12 @@ export async function POST(request: NextRequest) {
 
     if (typeof generated !== "string" || generated.trim() === "") {
       console.error("[generate-content] no text in candidates", JSON.stringify(data));
-      return NextResponse.json({ content: buildFallbackContent(mission_title, mission_instruction) });
+      return NextResponse.json({ error: "AI 생성에 실패했습니다." }, { status: 502 });
     }
 
     return NextResponse.json({ content: generated.trim() });
   } catch (err) {
     console.error("[generate-content] caught exception", err);
-    return NextResponse.json({ content: buildFallbackContent(mission_title, mission_instruction) });
+    return NextResponse.json({ error: "AI 생성에 실패했습니다." }, { status: 500 });
   }
 }
