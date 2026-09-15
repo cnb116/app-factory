@@ -3,6 +3,7 @@
 import { ScriptCard } from "@/lib/types";
 import CopyButton from "./CopyButton";
 import PremiumCapsule from "./PremiumCapsule";
+import UploadLinkButtons from "./UploadLinkButtons";
 
 interface PackageStepProps {
   cards: ScriptCard[];
@@ -45,11 +46,16 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
         <p className="mt-1 text-base text-zinc-600">항목마다 복사해서 바로 쓰세요</p>
       </div>
 
-      <PremiumCapsule
-        description="03호기 프로 패스 (대본 10종 무제한 + 3대 채널 배포 패키징)"
-        price="월 9,900원"
-        subtext="1인 창업자·개발자를 위한 무제한 숏폼 마케팅 엔진"
-      />
+      <div className="flex flex-col items-center gap-2">
+        <PremiumCapsule
+          description="03호기 프로 패스 (대본 10종 무제한 + 3대 채널 배포 패키징)"
+          price="월 9,900원"
+          subtext="1인 창업자·개발자를 위한 무제한 숏폼 마케팅 엔진"
+        />
+        <span className="rounded-full bg-yellow-400 px-4 py-1.5 text-center text-sm font-bold text-black">
+          🎉 [오픈 기념] 지금은 전 기능 100% 무료 이용 가능
+        </span>
+      </div>
 
       {cards.map((card, i) => (
         <div key={card.id} className="flex flex-col gap-4 rounded-2xl border-2 border-black bg-white p-5 shadow-xl">
@@ -76,6 +82,7 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
           <PackageSection title="✍️ 캡션 + 해시태그" copyText={buildCaptionBlock(card)}>
             <p className="text-base leading-relaxed text-black">{card.caption}</p>
             <p className="mt-2 text-sm text-zinc-600">{card.hashtags.join(" ")}</p>
+            <UploadLinkButtons />
           </PackageSection>
         </div>
       ))}
