@@ -46,8 +46,9 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
       </div>
 
       <PremiumCapsule
-        description="프리미엄 확장팩 (대본 무제한 생성 + 채널별 캡션 분리)"
-        price="3,900원"
+        description="03호기 프로 패스 (대본 10종 무제한 + 3대 채널 배포 패키징)"
+        price="월 9,900원"
+        subtext="1인 창업자·개발자를 위한 무제한 숏폼 마케팅 엔진"
       />
 
       {cards.map((card, i) => (
