@@ -1,0 +1,13 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경: 검정 라운드 사각형 -->
+  <rect width="512" height="512" rx="96" fill="#000000"/>
+
+  <!-- 재생(숏폼 영상) 아이콘 -->
+  <circle cx="256" cy="220" r="150" fill="none" stroke="#FFD400" stroke-width="18"/>
+  <path d="M 210 150 L 340 220 L 210 290 Z" fill="#FFD400"/>
+
+  <!-- 하단 왕버튼(선택 완료) 느낌의 체크 -->
+  <circle cx="256" cy="430" r="46" fill="#FFD400"/>
+  <path d="M 234 432 L 248 446 L 280 410"
+        stroke="#000000" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
