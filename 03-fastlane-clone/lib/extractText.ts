@@ -33,6 +33,22 @@ function isPrivateHost(hostname: string): boolean {
   return false;
 }
 
+export function buildFallbackKeyword(url: URL): string {
+  const hostParts = url.hostname.replace(/^www\./, "").split(".");
+  const domainName = hostParts.length > 2 ? hostParts.slice(0, -2).join(".") : hostParts[0];
+
+  const pathWords = decodeURIComponent(url.pathname)
+    .split(/[/\-_.]+/)
+    .filter((w) => w && !/^\d+$/.test(w));
+
+  const searchWords = decodeURIComponent(url.search)
+    .replace(/^\?/, "")
+    .split(/[=&]+/)
+    .filter((w) => w && !/^\d+$/.test(w));
+
+  return [domainName, ...pathWords, ...searchWords].join(" ").trim();
+}
+
 export function validateCrawlUrl(rawUrl: string): URL | null {
   try {
     const url = new URL(rawUrl);

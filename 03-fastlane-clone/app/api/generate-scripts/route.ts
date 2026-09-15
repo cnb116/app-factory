@@ -91,6 +91,8 @@ ${HOOK_STRUCTURES.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 
 10편 모두 순서를 지켜서 배열로 반환해줘.`;
 
+  console.log("[generate-scripts] 1/2 Gemini 호출 시작");
+  let raw: string;
   try {
     const response = await fetch(geminiEndpoint(apiKey), {
       method: "POST",
@@ -106,24 +108,33 @@ ${HOOK_STRUCTURES.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 
     if (!response.ok) {
       const errBody = await response.text();
-      console.error("[generate-scripts] Gemini non-OK response", response.status, errBody);
+      console.error("[generate-scripts] Gemini 호출 실패 — non-OK response", response.status, errBody);
       return NextResponse.json({ error: "대본 생성에 실패했습니다." }, { status: 502 });
     }
 
     const data = await response.json();
-    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (typeof raw !== "string" || raw.trim() === "") {
-      console.error("[generate-scripts] no text in candidates", JSON.stringify(data));
+    if (typeof text !== "string" || text.trim() === "") {
+      console.error("[generate-scripts] Gemini 응답에 후보 텍스트가 없음", JSON.stringify(data));
       return NextResponse.json({ error: "대본 결과를 받지 못했습니다." }, { status: 502 });
     }
 
+    raw = text;
+    console.log("[generate-scripts] Gemini 호출 성공, 응답 수신 완료");
+  } catch (err) {
+    console.error("[generate-scripts] Gemini 호출 중 예외 발생(네트워크/타임아웃 등)", err);
+    return NextResponse.json({ error: "잠시 후 다시 시도해주세요." }, { status: 500 });
+  }
+
+  console.log("[generate-scripts] 2/2 JSON 파싱 시작");
+  try {
     const parsed = JSON.parse(raw) as Omit<ScriptCard, "id">[];
     const cards: ScriptCard[] = parsed.map((card, i) => ({ ...card, id: String(i + 1) }));
-
+    console.log(`[generate-scripts] JSON 파싱 성공 — ${cards.length}편 생성됨`);
     return NextResponse.json({ cards });
   } catch (err) {
-    console.error("[generate-scripts] caught exception", err);
-    return NextResponse.json({ error: "잠시 후 다시 시도해주세요." }, { status: 500 });
+    console.error("[generate-scripts] JSON 파싱 실패 — Gemini 응답이 유효한 JSON이 아님", raw, err);
+    return NextResponse.json({ error: "대본 결과 형식이 올바르지 않습니다." }, { status: 502 });
   }
 }
