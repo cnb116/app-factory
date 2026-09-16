@@ -38,7 +38,7 @@ export default function CopyButton({ text, label = "복사" }: CopyButtonProps) 
     <button
       type="button"
       onClick={handleCopy}
-      className="shrink-0 rounded-lg bg-black px-4 py-2 text-base font-bold text-yellow-400 shadow transition active:scale-95"
+      className="shrink-0 rounded-lg bg-black px-4 py-2 text-center text-sm leading-tight font-bold text-yellow-400 shadow transition active:scale-95"
     >
       {copied ? "복사됨! ✓" : `📋 ${label}`}
     </button>

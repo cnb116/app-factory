@@ -9,6 +9,8 @@ interface UrlInputStepProps {
   error: string | null;
 }
 
+const DEMO_URL = "https://app-factory-text-cleaner.vercel.app";
+
 export default function UrlInputStep({ onSubmit, loading, loadingLabel, error }: UrlInputStepProps) {
   const [url, setUrl] = useState("");
 
@@ -16,6 +18,12 @@ export default function UrlInputStep({ onSubmit, loading, loadingLabel, error }:
     e.preventDefault();
     if (url.trim() === "" || loading) return;
     onSubmit(url.trim());
+  };
+
+  const handleDemoClick = () => {
+    if (loading) return;
+    setUrl(DEMO_URL);
+    onSubmit(DEMO_URL);
   };
 
   return (
@@ -35,11 +43,14 @@ export default function UrlInputStep({ onSubmit, loading, loadingLabel, error }:
           inputMode="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="분석할 URL을 입력하세요 (상세페이지, 블로그 등)"
+          placeholder="분석할 URL을 입력하세요"
           disabled={loading}
           required
           className="w-full rounded-xl border-2 border-black px-4 py-4 text-lg text-black outline-none disabled:opacity-50"
         />
+        <p className="-mt-2 text-sm text-zinc-500">
+          예시: 웹사이트 주소, 스마트스토어 링크, 네이버 블로그 글 URL, 또는 한 줄 소개 페이지
+        </p>
 
         <button
           type="submit"
@@ -47,6 +58,15 @@ export default function UrlInputStep({ onSubmit, loading, loadingLabel, error }:
           className="w-full rounded-xl bg-black py-4 text-xl font-bold text-yellow-400 shadow transition active:scale-95 disabled:opacity-40"
         >
           {loading ? loadingLabel : "숏폼 콘텐츠 분석 시작"}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDemoClick}
+          disabled={loading}
+          className="w-full rounded-xl border-2 border-black bg-white py-3 text-base font-bold text-black shadow transition active:scale-95 disabled:opacity-40"
+        >
+          ⚡ 예시 링크로 1초 체험해 보기 (01호기 텍스트 정리기)
         </button>
 
         {error && (

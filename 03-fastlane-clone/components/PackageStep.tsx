@@ -12,11 +12,16 @@ interface PackageStepProps {
 
 function buildFullScript(card: ScriptCard): string {
   return [
-    `[훅 0~5초] ${card.hookLine}`,
-    `[고통 자극 5~15초] ${card.painAgitation}`,
-    `[시연 가이드 15~30초] ${card.demoGuide}`,
-    `[CTA 30~35초] ${card.cta}`,
+    `[훅 0~5초]\n${card.hookLine}`,
+    `[고통 자극 5~15초]\n${card.painAgitation}`,
+    `[시연 가이드 15~30초]\n${card.demoGuide}`,
+    `[CTA 30~35초]\n${card.cta}`,
   ].join("\n\n");
+}
+
+// Vrew 등 자막 편집 프로그램에 그대로 붙여넣을 실제 대사만 추출 (연출 지시문인 demoGuide는 제외, 시간 라벨도 제외)
+function buildVrewScript(card: ScriptCard): string {
+  return [card.hookLine, card.painAgitation, card.cta].join("\n\n");
 }
 
 function buildCaptionBlock(card: ScriptCard): string {
@@ -68,18 +73,27 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
           <PackageSection
             title="🖼️ 0초 썸네일 문구"
             copyText={`${card.thumbnailLine1}\n${card.thumbnailLine2}`}
+            copyLabel="0초 썸네일 카피만 복사"
           >
             <p className="text-lg leading-snug font-black text-black">{card.thumbnailLine1}</p>
             <p className="text-lg leading-snug font-black text-black">{card.thumbnailLine2}</p>
           </PackageSection>
 
-          <PackageSection title="🎬 35초 영상 대본" copyText={buildFullScript(card)}>
+          <PackageSection
+            title="🎬 35초 영상 대본"
+            copyText={buildVrewScript(card)}
+            copyLabel="Vrew용 자막 대본만 복사"
+          >
             <p className="whitespace-pre-line text-base leading-relaxed text-black">
               {buildFullScript(card)}
             </p>
           </PackageSection>
 
-          <PackageSection title="✍️ 캡션 + 해시태그" copyText={buildCaptionBlock(card)}>
+          <PackageSection
+            title="✍️ 캡션 + 해시태그"
+            copyText={buildCaptionBlock(card)}
+            copyLabel="유튜브/릴스/틱톡 본문+태그만 복사"
+          >
             <p className="text-base leading-relaxed text-black">{card.caption}</p>
             <p className="mt-2 text-sm text-zinc-600">{card.hashtags.join(" ")}</p>
             <UploadLinkButtons />
@@ -101,17 +115,19 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
 function PackageSection({
   title,
   copyText,
+  copyLabel,
   children,
 }: {
   title: string;
   copyText: string;
+  copyLabel: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl bg-zinc-50 p-4">
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-bold text-zinc-500">{title}</p>
-        <CopyButton text={copyText} />
+        <CopyButton text={copyText} label={copyLabel} />
       </div>
       {children}
     </div>

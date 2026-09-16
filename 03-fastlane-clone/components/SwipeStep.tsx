@@ -79,7 +79,7 @@ function ScriptLine({ emoji, label, text }: { emoji: string; label: string; text
       <p className="text-sm font-bold text-zinc-500">
         {emoji} {label}
       </p>
-      <p className="mt-1 text-base leading-relaxed text-black">{text}</p>
+      <p className="mt-1 whitespace-pre-line text-base leading-relaxed text-black">{text}</p>
     </div>
   );
 }
