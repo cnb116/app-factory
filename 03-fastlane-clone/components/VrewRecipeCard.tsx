@@ -51,6 +51,10 @@ export default function VrewRecipeCard({
           </li>
           <li>③ 15~30초 → 내 앱/화면 실제 녹화 클립 삽입</li>
         </ol>
+        <div className="mt-3 flex flex-col gap-1 border-t border-black/10 pt-3 text-xs leading-snug text-zinc-600">
+          <p>💡 클립이 단 3개로 생성되어 음성이 부드럽게 이어집니다.</p>
+          <p>💡 자막 줄바꿈은 Vrew 화면에서 글자가 길 경우 자막을 클릭해 Enter 한 번만 치시면 됩니다.</p>
+        </div>
       </div>
 
       {children}

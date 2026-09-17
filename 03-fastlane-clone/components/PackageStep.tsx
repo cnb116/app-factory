@@ -21,8 +21,11 @@ function buildFullScript(card: ScriptCard): string {
 }
 
 // Vrew 등 자막 편집 프로그램에 그대로 붙여넣을 실제 대사만 추출 (연출 지시문인 demoGuide는 제외, 시간 라벨도 제외)
+// 문장 중간에 \n이 섞여 들어오면 Vrew가 클립을 잘게 쪼개므로, 혹시 모를 줄바꿈은 구간 내에서 공백으로 합치고
+// 구간(훅/고통/CTA) 사이만 빈 줄로 구분해 항상 3개 클립 구조가 되도록 방어적으로 정리한다.
 function buildVrewScript(card: ScriptCard): string {
-  return [card.hookLine, card.painAgitation, card.cta].join("\n\n");
+  const toSingleLine = (text: string) => text.replace(/\s*\n+\s*/g, " ").trim();
+  return [card.hookLine, card.painAgitation, card.cta].map(toSingleLine).join("\n\n");
 }
 
 function buildCaptionBlock(card: ScriptCard): string {
