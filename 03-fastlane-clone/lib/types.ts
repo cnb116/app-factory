@@ -11,7 +11,9 @@ export interface ScriptCard {
   thumbnailLine1: string;
   thumbnailLine2: string;
   hookLine: string;
+  hookSearchKeyword: string;
   painAgitation: string;
+  painSearchKeyword: string;
   demoGuide: string;
   cta: string;
   caption: string;

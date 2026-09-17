@@ -4,6 +4,7 @@ import { ScriptCard } from "@/lib/types";
 import CopyButton from "./CopyButton";
 import PremiumCapsule from "./PremiumCapsule";
 import UploadLinkButtons from "./UploadLinkButtons";
+import VrewRecipeCard from "./VrewRecipeCard";
 
 interface PackageStepProps {
   cards: ScriptCard[];
@@ -79,15 +80,15 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
             <p className="text-lg leading-snug font-black text-black">{card.thumbnailLine2}</p>
           </PackageSection>
 
-          <PackageSection
-            title="🎬 35초 영상 대본"
+          <VrewRecipeCard
             copyText={buildVrewScript(card)}
-            copyLabel="Vrew용 자막 대본만 복사"
+            hookSearchKeyword={card.hookSearchKeyword}
+            painSearchKeyword={card.painSearchKeyword}
           >
             <p className="whitespace-pre-line text-base leading-relaxed text-black">
               {buildFullScript(card)}
             </p>
-          </PackageSection>
+          </VrewRecipeCard>
 
           <PackageSection
             title="✍️ 캡션 + 해시태그"

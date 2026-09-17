@@ -24,7 +24,9 @@ const SCRIPT_SCHEMA = {
       thumbnailLine1: { type: "STRING" },
       thumbnailLine2: { type: "STRING" },
       hookLine: { type: "STRING" },
+      hookSearchKeyword: { type: "STRING" },
       painAgitation: { type: "STRING" },
+      painSearchKeyword: { type: "STRING" },
       demoGuide: { type: "STRING" },
       cta: { type: "STRING" },
       caption: { type: "STRING" },
@@ -35,7 +37,9 @@ const SCRIPT_SCHEMA = {
       "thumbnailLine1",
       "thumbnailLine2",
       "hookLine",
+      "hookSearchKeyword",
       "painAgitation",
+      "painSearchKeyword",
       "demoGuide",
       "cta",
       "caption",
@@ -90,7 +94,9 @@ hookLine, painAgitation, cta 이 세 항목은 실제로 화자가 말하는 대
 - hookType: 사용한 훅 구조 이름 (위 목록의 이름 그대로)
 - thumbnailLine1, thumbnailLine2: 영상 0초에 화면에 크게 뜨는 썸네일 볼드 문구 2줄 (각 줄 12자 이내, 강렬하게)
 - hookLine: 영상 시작 0~5초에 화자가 실제로 말하는 훅 대사 (위 자막 줄바꿈 규칙 적용)
+- hookSearchKeyword: 0~5초 구간에 깔릴 배경 영상을 Vrew의 내장 무료 비디오 라이브러리에서 검색할 한글 키워드 딱 1단어 (예: "시계", "타이핑", "병원", "충격". hookLine 내용과 어울리는 장면을 상상할 수 있는 구체적인 명사 하나)
 - painAgitation: 5~15초, 시청자의 고통을 콕 찌르며 공감시키는 대사 (위 자막 줄바꿈 규칙 적용)
+- painSearchKeyword: 5~15초 구간에 깔릴 배경 영상을 Vrew의 내장 무료 비디오 라이브러리에서 검색할 한글 키워드 딱 1단어 (예: "야근", "한숨", "피곤", "서류". painAgitation 내용과 어울리는 장면을 상상할 수 있는 구체적인 명사 하나)
 - demoGuide: 15~30초, 실제로 몸으로 보여주거나 시연할 행동을 지시하는 가이드 (연출 지시문 형태 — 화자의 대사가 아니므로 줄바꿈 규칙 적용하지 않고 한 문장으로 작성)
 - cta: 30~35초, 마무리 행동 유도 대사 (댓글/저장/팔로우 등, 위 자막 줄바꿈 규칙 적용)
 - caption: 유튜브 쇼츠/릴스/틱톡에 공통으로 쓸 수 있는 게시글 캡션 (2~4문장, 줄바꿈 규칙 적용하지 않음)
