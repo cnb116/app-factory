@@ -31,6 +31,32 @@ const SCRIPT_SCHEMA = {
       cta: { type: "STRING" },
       caption: { type: "STRING" },
       hashtags: { type: "ARRAY", items: { type: "STRING" } },
+      youtubeSeo: {
+        type: "OBJECT",
+        properties: {
+          seoTitle: { type: "STRING" },
+          seoDescription: { type: "STRING" },
+          tags: { type: "ARRAY", items: { type: "STRING" } },
+        },
+        required: ["seoTitle", "seoDescription", "tags"],
+      },
+      instagramSeo: {
+        type: "OBJECT",
+        properties: {
+          firstLine: { type: "STRING" },
+          body: { type: "STRING" },
+          hashtags: { type: "ARRAY", items: { type: "STRING" } },
+        },
+        required: ["firstLine", "body", "hashtags"],
+      },
+      tiktokSeo: {
+        type: "OBJECT",
+        properties: {
+          seoCaption: { type: "STRING" },
+          hashtags: { type: "ARRAY", items: { type: "STRING" } },
+        },
+        required: ["seoCaption", "hashtags"],
+      },
     },
     required: [
       "hookType",
@@ -44,6 +70,9 @@ const SCRIPT_SCHEMA = {
       "cta",
       "caption",
       "hashtags",
+      "youtubeSeo",
+      "instagramSeo",
+      "tiktokSeo",
     ],
   },
 };
@@ -55,9 +84,11 @@ export async function POST(request: NextRequest) {
   }
 
   let analysis: Partial<ContentAnalysis> | undefined;
+  let sourceUrl: string | undefined;
   try {
     const body = await request.json();
     analysis = body?.analysis;
+    sourceUrl = typeof body?.sourceUrl === "string" ? body.sourceUrl : undefined;
   } catch {
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   }
@@ -103,6 +134,20 @@ hookLine, painAgitation, demoGuide, cta 이 네 항목은 전부 실제로 화�
 - cta: 30~35초, 마무리 행동 유도 대사 (댓글/저장/팔로우 등). 온전한 문장 1개 (위 자막 문장 규칙 적용)
 - caption: 유튜브 쇼츠/릴스/틱톡에 공통으로 쓸 수 있는 게시글 캡션 (2~4문장)
 - hashtags: 해시태그 8~12개 (# 포함, 한글/영문 혼용 가능)
+
+[플랫폼별 SEO 메타데이터 — 위 caption/hashtags와는 별개로 채널마다 알고리즘·검색 특성에 맞춰 따로 최적화해서 채워줘]
+
+- youtubeSeo (유튜브 쇼츠는 "검색" 기반 유입이 크다 — 검색 키워드를 반복 노출시키는 게 핵심):
+  - seoTitle: 60자 이내. 핵심 검색 키워드를 앞쪽에 배치하고 클릭을 유도하는 어그로 문구를 더한 제목
+  - seoDescription: 핵심 검색 키워드를 자연스럽게 3번 반복해서 넣은 설명 문단 + "${sourceUrl ?? "프로필 링크"}" 언급 + 고정 댓글을 유도하는 CTA 한 줄("궁금하신 분은 고정 댓글 확인하세요" 등)까지 포함해서 3~4문장으로 작성
+  - tags: 검색량이 높을 법한 키워드 10개, 쉼표로 구분할 문자열 배열 (# 없이 순수 키워드)
+- instagramSeo (릴스는 "탐색 탭 노출/저장·공유" 기반이 크다 — 첫 줄로 스크롤을 멈추고, 저장하게 만드는 게 핵심):
+  - firstLine: 피드에서 스크롤 멈추게 만드는 시선을 끄는 한 줄
+  - body: "저장해두세요", "공유해서 알려주세요" 같은 저장/공유를 직접 유도하는 멘트 포함 2~3문장
+  - hashtags: 총 3~5개만. 팔로워/도달이 큰 대형 키워드 해시태그 2개 + 타깃이 좁은 중소형 키워드 해시태그 3개로 구성(# 포함)
+- tiktokSeo (틱톡은 "질문형 검색"이 많다 — 사람들이 검색창에 그대로 칠 법한 질문 형태가 핵심):
+  - seoCaption: "~하는 법?", "~할 때 뭐 써요?"처럼 사람들이 틱톡 검색창에 직접 타이핑할 법한 질문형 문장으로 작성
+  - hashtags: 검색 랭킹에 잡히는 핵심 키워드 해시태그 + 그 시점 트렌드성 해시태그를 섞어 4개 내외(# 포함)
 
 10편 모두 순서를 지켜서 배열로 반환해줘.`;
 

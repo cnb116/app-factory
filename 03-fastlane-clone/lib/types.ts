@@ -5,6 +5,23 @@ export interface ContentAnalysis {
   summary: string;
 }
 
+export interface YoutubeSeoMeta {
+  seoTitle: string;
+  seoDescription: string;
+  tags: string[];
+}
+
+export interface InstagramSeoMeta {
+  firstLine: string;
+  body: string;
+  hashtags: string[];
+}
+
+export interface TiktokSeoMeta {
+  seoCaption: string;
+  hashtags: string[];
+}
+
 export interface ScriptCard {
   id: string;
   hookType: string;
@@ -18,6 +35,9 @@ export interface ScriptCard {
   cta: string;
   caption: string;
   hashtags: string[];
+  youtubeSeo: YoutubeSeoMeta;
+  instagramSeo: InstagramSeoMeta;
+  tiktokSeo: TiktokSeoMeta;
 }
 
 export interface GeneratedScripts {

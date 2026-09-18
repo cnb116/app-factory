@@ -5,6 +5,7 @@ import CopyButton from "./CopyButton";
 import PremiumCapsule from "./PremiumCapsule";
 import UploadLinkButtons from "./UploadLinkButtons";
 import VrewRecipeCard from "./VrewRecipeCard";
+import PlatformSeoCards from "./PlatformSeoCards";
 
 interface PackageStepProps {
   cards: ScriptCard[];
@@ -103,6 +104,8 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
             <p className="mt-2 text-sm text-zinc-600">{card.hashtags.join(" ")}</p>
             <UploadLinkButtons />
           </PackageSection>
+
+          <PlatformSeoCards card={card} />
         </div>
       ))}
 

@@ -45,7 +45,7 @@ export default function Home() {
       const scriptsRes = await fetch("/api/generate-scripts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysis: analyzeData.analysis }),
+        body: JSON.stringify({ analysis: analyzeData.analysis, sourceUrl: analyzeData.sourceUrl }),
       });
       const scriptsData = await scriptsRes.json();
 
