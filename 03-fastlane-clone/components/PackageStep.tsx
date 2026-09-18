@@ -20,12 +20,13 @@ function buildFullScript(card: ScriptCard): string {
   ].join("\n\n");
 }
 
-// Vrew 등 자막 편집 프로그램에 그대로 붙여넣을 실제 대사만 추출 (연출 지시문인 demoGuide는 제외, 시간 라벨도 제외)
+// Vrew 등 자막 편집 프로그램에 그대로 붙여넣을 실제 대사만 추출 (시간 라벨은 제외).
+// demoGuide도 이제 연출 지시문이 아니라 실제 시연 설명 대사이므로 포함 — 훅/고통/시연/CTA 4구간 전부 오디오가 채워진다.
 // 문장 중간에 \n이 섞여 들어오면 Vrew가 클립을 잘게 쪼개므로, 혹시 모를 줄바꿈은 구간 내에서 공백으로 합치고
-// 구간(훅/고통/CTA) 사이만 빈 줄로 구분해 항상 3개 클립 구조가 되도록 방어적으로 정리한다.
+// 구간 사이만 빈 줄로 구분해 항상 4개 클립 구조가 되도록 방어적으로 정리한다.
 function buildVrewScript(card: ScriptCard): string {
   const toSingleLine = (text: string) => text.replace(/\s*\n+\s*/g, " ").trim();
-  return [card.hookLine, card.painAgitation, card.cta].map(toSingleLine).join("\n\n");
+  return [card.hookLine, card.painAgitation, card.demoGuide, card.cta].map(toSingleLine).join("\n\n");
 }
 
 function buildCaptionBlock(card: ScriptCard): string {

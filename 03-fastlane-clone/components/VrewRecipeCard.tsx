@@ -54,7 +54,9 @@ export default function VrewRecipeCard({
             </span>
           </li>
           <li>
-            <StepRow number={3}>8초 이후엔 내 폰 녹화 화면 넣고 영상 내보내기 끝</StepRow>
+            <StepRow number={3}>
+              15~30초 시연: 내 폰 녹화 화면 얹고, 자막 위치를 화면 위/아래로 살짝 옮기면 끝!
+            </StepRow>
           </li>
         </ol>
 
