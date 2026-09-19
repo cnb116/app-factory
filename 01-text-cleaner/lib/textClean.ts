@@ -98,3 +98,45 @@ export function cleanText(text: string, options: CleanOptions): string {
   }
   return result;
 }
+
+export interface CleanStats {
+  charsBefore: number;
+  charsAfter: number;
+  charsReduced: number;
+  spacesRemoved: number;
+  lineBreaksRemoved: number;
+}
+
+function countChar(text: string, char: string): number {
+  return text.split(char).length - 1;
+}
+
+// cleanText와 같은 순서(줄바꿈 정리 -> 띄어쓰기 교정)로 처리하되, 각 단계
+// 직후의 중간 결과를 비교해서 "그 단계가 실제로 몇 개를 정리했는지"를 센다.
+// 줄바꿈 정리는 문단을 합치며 줄바꿈 대신 공백 1칸을 새로 끼워 넣기 때문에,
+// 최종 결과와 원문을 통째로 비교해 공백 개수를 세면 그 새로 생긴 공백까지
+// "정리된 공백"으로 잘못 잡힌다. 그래서 띄어쓰기 교정 단계는 "줄바꿈 정리
+// 직후" 텍스트를 기준선으로 삼아, 그 단계 자체가 줄인 공백 개수만 센다.
+export function cleanTextWithStats(
+  text: string,
+  options: CleanOptions
+): { result: string; stats: CleanStats } {
+  const original = text.replace(/\r\n/g, "\n");
+
+  const afterLineBreaks = options.lineBreaks ? cleanLineBreaks(original) : original;
+  const final = options.spacing ? fixSpacing(afterLineBreaks) : afterLineBreaks;
+
+  const lineBreaksRemoved = Math.max(0, countChar(original, "\n") - countChar(afterLineBreaks, "\n"));
+  const spacesRemoved = Math.max(0, countChar(afterLineBreaks, " ") - countChar(final, " "));
+
+  return {
+    result: final,
+    stats: {
+      charsBefore: original.length,
+      charsAfter: final.length,
+      charsReduced: original.length - final.length,
+      spacesRemoved,
+      lineBreaksRemoved,
+    },
+  };
+}

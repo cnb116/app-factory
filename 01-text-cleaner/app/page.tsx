@@ -3,8 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import PremiumCapsule from "@/components/PremiumCapsule";
 import { DiffToken, diffWords, hasLongDigitRun } from "@/lib/diff";
-import { cleanText } from "@/lib/textClean";
+import { CleanStats, cleanTextWithStats } from "@/lib/textClean";
 import { consumeFreeUse, getRemainingFreeUses } from "@/lib/usage";
+
+function buildCleanSummary(stats: CleanStats): string {
+  const { charsBefore, charsAfter, charsReduced, spacesRemoved, lineBreaksRemoved } = stats;
+  const changeLabel =
+    charsReduced > 0 ? `${charsReduced}자 감소` : charsReduced < 0 ? `${Math.abs(charsReduced)}자 증가` : "변화 없음";
+
+  return `${charsBefore}자 → ${charsAfter}자 (${changeLabel}, 공백 ${spacesRemoved}개·줄바꿈 ${lineBreaksRemoved}개 정리됨)`;
+}
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -15,6 +23,7 @@ export default function Home() {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [lineBreaksOn, setLineBreaksOn] = useState(true);
   const [spacingOn, setSpacingOn] = useState(true);
+  const [cleanStats, setCleanStats] = useState<CleanStats | null>(null);
 
   useEffect(() => {
     setRemaining(getRemainingFreeUses());
@@ -31,10 +40,14 @@ export default function Home() {
     if (text.trim() === "") return;
 
     const originalText = text;
-    const cleaned = cleanText(text, { lineBreaks: lineBreaksOn, spacing: spacingOn });
+    const { result: cleaned, stats } = cleanTextWithStats(text, {
+      lineBreaks: lineBreaksOn,
+      spacing: spacingOn,
+    });
 
     setText(cleaned);
     setCorrectionDiff(diffWords(originalText, cleaned));
+    setCleanStats(stats);
     setShowNumberWarning(false);
   };
 
@@ -95,6 +108,7 @@ export default function Home() {
 
       setText(data.corrected);
       setCorrectionDiff(diffWords(originalText, data.corrected));
+      setCleanStats(null);
       setShowNumberWarning(hasLongDigitRun(data.corrected));
       setRemaining(consumeFreeUse());
     } catch {
@@ -117,6 +131,12 @@ export default function Home() {
         {showNumberWarning && correctionDiff && (
           <p className="text-center text-base font-bold text-amber-600">
             ⚠️ 숫자는 AI가 놓칠 수 있어요. 다시 한 번 확인해주세요.
+          </p>
+        )}
+
+        {correctionDiff && cleanStats && (
+          <p className="rounded-xl bg-black px-4 py-3 text-center text-xl font-extrabold text-yellow-400 sm:text-2xl">
+            {buildCleanSummary(cleanStats)}
           </p>
         )}
 
