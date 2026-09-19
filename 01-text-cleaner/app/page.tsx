@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import PremiumCapsule from "@/components/PremiumCapsule";
 import { DiffToken, diffWords, hasLongDigitRun } from "@/lib/diff";
+import { cleanText } from "@/lib/textClean";
 import { consumeFreeUse, getRemainingFreeUses } from "@/lib/usage";
 
 export default function Home() {
@@ -12,6 +13,8 @@ export default function Home() {
   const [correctionDiff, setCorrectionDiff] = useState<DiffToken[] | null>(null);
   const [showNumberWarning, setShowNumberWarning] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
+  const [lineBreaksOn, setLineBreaksOn] = useState(true);
+  const [spacingOn, setSpacingOn] = useState(true);
 
   useEffect(() => {
     setRemaining(getRemainingFreeUses());
@@ -25,42 +28,13 @@ export default function Home() {
   }, [text]);
 
   const handleClean = () => {
-    const paragraphs = text
-      .replace(/\r\n/g, "\n")
-      .split(/\n\s*\n/)
-      .map((paragraph) => {
-        const lines = paragraph
-          .split("\n")
-          .map((line) => line.replace(/[ \t]+/g, " ").trim())
-          .filter((line) => line.length > 0);
+    if (text.trim() === "") return;
 
-        // 계좌번호·전화번호처럼 숫자-하이픈 조합이 있는 줄은 독립된 줄로 보존하고,
-        // 그 앞뒤의 일반 문장 줄들만 한 줄로 합친다.
-        const outputLines: string[] = [];
-        let buffer: string[] = [];
-        const flushBuffer = () => {
-          if (buffer.length > 0) {
-            outputLines.push(buffer.join(" "));
-            buffer = [];
-          }
-        };
+    const originalText = text;
+    const cleaned = cleanText(text, { lineBreaks: lineBreaksOn, spacing: spacingOn });
 
-        for (const line of lines) {
-          if (/\d{2,}-\d/.test(line)) {
-            flushBuffer();
-            outputLines.push(line);
-          } else {
-            buffer.push(line);
-          }
-        }
-        flushBuffer();
-
-        return outputLines.join("\n");
-      })
-      .filter((paragraph) => paragraph.length > 0);
-
-    setText(paragraphs.join("\n\n"));
-    setCorrectionDiff(null);
+    setText(cleaned);
+    setCorrectionDiff(diffWords(originalText, cleaned));
     setShowNumberWarning(false);
   };
 
@@ -183,6 +157,27 @@ export default function Home() {
             <div className="text-xl font-medium text-zinc-700">단어 수</div>
             <div className="text-3xl font-bold text-black">{wordCount}</div>
           </div>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xl font-semibold text-zinc-700">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={lineBreaksOn}
+              onChange={(e) => setLineBreaksOn(e.target.checked)}
+              className="h-6 w-6 accent-black"
+            />
+            줄바꿈 정리
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={spacingOn}
+              onChange={(e) => setSpacingOn(e.target.checked)}
+              className="h-6 w-6 accent-black"
+            />
+            띄어쓰기 교정
+          </label>
         </div>
 
         <button
