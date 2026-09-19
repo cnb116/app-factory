@@ -2,7 +2,7 @@
 
 import { ScriptCard } from "@/lib/types";
 import CopyButton from "./CopyButton";
-import PremiumCapsule from "./PremiumCapsule";
+import ProPassPaymentButton from "./ProPassPaymentButton";
 import UploadLinkButtons from "./UploadLinkButtons";
 import VrewRecipeCard from "./VrewRecipeCard";
 import PlatformSeoCards from "./PlatformSeoCards";
@@ -58,11 +58,7 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
       </div>
 
       <div className="flex flex-col items-center gap-2">
-        <PremiumCapsule
-          description="03호기 프로 패스 (대본 10종 무제한 + 3대 채널 배포 패키징)"
-          price="월 9,900원"
-          subtext="1인 창업자·개발자를 위한 무제한 숏폼 마케팅 엔진"
-        />
+        <ProPassPaymentButton />
         <span className="rounded-full bg-yellow-400 px-4 py-1.5 text-center text-sm font-bold text-black">
           🎉 [오픈 기념] 지금은 전 기능 100% 무료 이용 가능
         </span>
