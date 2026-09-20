@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ContentAnalysis, ScriptCard } from "@/lib/types";
+import { activateMagicPass, canGenerate, getMagicPassDaysRemaining, hasUnlimitedAccess, markFreeTrialUsed } from "@/lib/trial";
 import UrlInputStep from "@/components/UrlInputStep";
 import SwipeStep from "@/components/SwipeStep";
 import PackageStep from "@/components/PackageStep";
 import CallFloatingButton from "@/components/CallFloatingButton";
+import PaywallModal from "@/components/PaywallModal";
+import TrialStatusBanner from "@/components/TrialStatusBanner";
 
 type Phase = "input" | "swipe" | "package";
 
@@ -20,7 +23,23 @@ export default function Home() {
   const [swipeIndex, setSwipeIndex] = useState(0);
   const [accepted, setAccepted] = useState<ScriptCard[]>([]);
 
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [magicPassDaysRemaining, setMagicPassDaysRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("pass") === "free7day") {
+      activateMagicPass();
+    }
+    setMagicPassDaysRemaining(getMagicPassDaysRemaining());
+  }, []);
+
   const handleAnalyze = async (url: string) => {
+    if (!canGenerate()) {
+      setShowPaywall(true);
+      return;
+    }
+
     setError(null);
     setLoading(true);
     setLoadingLabel("페이지를 분석하는 중...");
@@ -55,6 +74,10 @@ export default function Home() {
         return;
       }
 
+      if (!hasUnlimitedAccess()) {
+        markFreeTrialUsed();
+      }
+
       setCards(scriptsData.cards);
       setSwipeIndex(0);
       setAccepted([]);
@@ -87,10 +110,13 @@ export default function Home() {
     setSwipeIndex(0);
     setAccepted([]);
     setError(null);
+    setMagicPassDaysRemaining(getMagicPassDaysRemaining());
   };
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-white">
+      <TrialStatusBanner daysRemaining={magicPassDaysRemaining} />
+
       {phase === "input" && (
         <UrlInputStep onSubmit={handleAnalyze} loading={loading} loadingLabel={loadingLabel} error={error} />
       )}
@@ -102,6 +128,8 @@ export default function Home() {
       {phase === "package" && <PackageStep cards={accepted} onRestart={handleRestart} />}
 
       <CallFloatingButton />
+
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
     </div>
   );
 }

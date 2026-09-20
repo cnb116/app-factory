@@ -59,9 +59,6 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
 
       <div className="flex flex-col items-center gap-2">
         <ProPassPaymentButton />
-        <span className="rounded-full bg-yellow-400 px-4 py-1.5 text-center text-sm font-bold text-black">
-          🎉 [오픈 기념] 지금은 전 기능 100% 무료 이용 가능
-        </span>
       </div>
 
       {cards.map((card, i) => (
