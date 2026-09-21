@@ -1,0 +1,7 @@
+export interface ViralFeed {
+  threadPost: string;
+  storySticker: string;
+}
+
+export const STORY_LINK_URL = "https://03-fastlane-clone.vercel.app/?pass=free7day";
+export const STORY_LINK_LABEL = "👉 7일 무료 이용권";
