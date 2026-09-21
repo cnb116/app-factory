@@ -1,9 +1,0 @@
-<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <!-- 배경: 검정 라운드 사각형 -->
-  <rect width="512" height="512" rx="96" fill="#000000"/>
-
-  <!-- 확산(바이럴) 아이콘: 중심 점 + 퍼지는 원 -->
-  <circle cx="256" cy="256" r="46" fill="#FFD400"/>
-  <circle cx="256" cy="256" r="120" fill="none" stroke="#FFD400" stroke-width="16" opacity="0.85"/>
-  <circle cx="256" cy="256" r="190" fill="none" stroke="#FFD400" stroke-width="14" opacity="0.5"/>
-</svg>
