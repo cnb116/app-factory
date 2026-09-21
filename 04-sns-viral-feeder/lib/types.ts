@@ -1,6 +1,10 @@
 export interface ViralFeed {
   threadPost: string;
+  threadFirstComment: string;
   storySticker: string;
+  reelsPinnedComment: string;
+  reelsCaption: string;
+  commentDmTrigger: string;
 }
 
 export const STORY_LINK_URL = "https://03-fastlane-clone.vercel.app/?pass=free7day";

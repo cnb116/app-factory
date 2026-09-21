@@ -36,7 +36,7 @@ function StoryRow({
   return (
     <div className="rounded-xl bg-zinc-50 p-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-bold text-zinc-500">{title}</p>
+        <p className="text-sm font-bold whitespace-nowrap text-zinc-500">{title}</p>
         <CopyButton text={value} label={copyLabel} onCopied={onCopied} />
       </div>
       <p className="text-base leading-relaxed break-all text-black">{value}</p>

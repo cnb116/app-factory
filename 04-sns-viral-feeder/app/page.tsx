@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ViralFeed } from "@/lib/types";
-import ThreadCard from "@/components/ThreadCard";
+import TextCard from "@/components/TextCard";
 import StoryGuideCard from "@/components/StoryGuideCard";
 import Toast from "@/components/Toast";
 
@@ -75,8 +75,36 @@ export default function Home() {
 
       {feed && (
         <div className="flex flex-col gap-4">
-          <ThreadCard threadPost={feed.threadPost} onCopied={showToast} />
+          <TextCard icon="🧵" title="스레드 본문 원고" text={feed.threadPost} onCopied={showToast} />
+          <TextCard
+            icon="💬"
+            title="스레드 첫 댓글 링크"
+            text={feed.threadFirstComment}
+            copyLabel="댓글 문구 복사"
+            onCopied={showToast}
+          />
           <StoryGuideCard storySticker={feed.storySticker} onCopied={showToast} />
+          <TextCard
+            icon="📌"
+            title="릴스 고정 댓글"
+            text={feed.reelsPinnedComment}
+            copyLabel="고정 댓글 복사"
+            onCopied={showToast}
+          />
+          <TextCard
+            icon="🔍"
+            title="릴스 캡션 (SEO 125자 최적화)"
+            text={feed.reelsCaption}
+            copyLabel="캡션 복사"
+            onCopied={showToast}
+          />
+          <TextCard
+            icon="📩"
+            title="댓글/DM 유도 트리거"
+            text={feed.commentDmTrigger}
+            copyLabel="트리거 문구 복사"
+            onCopied={showToast}
+          />
         </div>
       )}
 
