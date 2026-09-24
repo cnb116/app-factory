@@ -37,7 +37,14 @@ function stripMarkdown(text: string): string {
 }
 
 // 매 생성 요청(성공/실패 공통)을 Make.com으로 로깅한다. 웹훅 미설정이거나 전송 실패해도 본 기능(대본 생성) 자체는 절대 막지 않는다.
-async function logGenerationToMake(payload: { topic: string; status: "success" | "error"; errorMessage?: string }) {
+async function logGenerationToMake(payload: {
+  topic: string;
+  status: "success" | "error";
+  errorMessage?: string;
+  thread_post?: string;
+  story_sticker_text?: string;
+  reels_pinned_comment?: string;
+}) {
   const webhookUrl = process.env.MAKE_LOG_WEBHOOK_URL;
   if (!webhookUrl) return;
 
@@ -171,7 +178,13 @@ ${topic}
       commentDmTrigger: stripMarkdown(parsed.commentDmTrigger),
     };
     console.log("[generate-feed] JSON 파싱 성공");
-    await logGenerationToMake({ topic, status: "success" });
+    await logGenerationToMake({
+      topic,
+      status: "success",
+      thread_post: feed.threadPost,
+      story_sticker_text: feed.storySticker,
+      reels_pinned_comment: feed.reelsPinnedComment,
+    });
     return NextResponse.json({ feed });
   } catch (err) {
     console.error("[generate-feed] JSON 파싱 실패 — Gemini 응답이 유효한 JSON이 아님", raw, err);
