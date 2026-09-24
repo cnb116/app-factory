@@ -36,6 +36,14 @@ function stripMarkdown(text: string): string {
   return text.replace(/\*\*/g, "").replace(/[*_`#]/g, "").trim();
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Gemini 모델이 "high demand"로 일시 과부하(503)일 때만 짧게 재시도한다. 그 외 에러(4xx 등)는 재시도해도 소용없으므로 즉시 반환.
+const GEMINI_MAX_RETRIES = 2;
+const GEMINI_RETRY_DELAY_MS = 1200;
+
 // 매 생성 요청(성공/실패 공통)을 Make.com으로 로깅한다. 웹훅 미설정이거나 전송 실패해도 본 기능(대본 생성) 자체는 절대 막지 않는다.
 async function logGenerationToMake(payload: {
   topic: string;
@@ -129,23 +137,46 @@ ${topic}
   console.log("[generate-feed] 1/2 Gemini 호출 시작");
   let raw: string;
   try {
-    const response = await fetch(geminiEndpoint(apiKey), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: FEED_SCHEMA,
-        },
-      }),
-    });
+    let response: Response;
+    let attempt = 0;
+
+    while (true) {
+      response = await fetch(geminiEndpoint(apiKey), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: FEED_SCHEMA,
+          },
+        }),
+      });
+
+      if (response.ok || response.status !== 503 || attempt >= GEMINI_MAX_RETRIES) {
+        break;
+      }
+
+      console.warn(
+        `[generate-feed] Gemini 503(일시 과부하) — ${GEMINI_RETRY_DELAY_MS}ms 후 재시도 (${attempt + 1}/${GEMINI_MAX_RETRIES})`
+      );
+      await sleep(GEMINI_RETRY_DELAY_MS);
+      attempt += 1;
+    }
 
     if (!response.ok) {
       const errBody = await response.text();
-      console.error("[generate-feed] Gemini 호출 실패 — non-OK response", response.status, errBody);
-      await logGenerationToMake({ topic, status: "error", errorMessage: `gemini_non_ok_${response.status}` });
-      return NextResponse.json({ error: "원고 생성에 실패했습니다." }, { status: 502 });
+      console.error(
+        `[generate-feed] Gemini 호출 실패 — non-OK response (총 ${attempt + 1}회 시도)`,
+        response.status,
+        errBody
+      );
+      await logGenerationToMake({
+        topic,
+        status: "error",
+        errorMessage: `gemini_non_ok_${response.status}_after_${attempt + 1}_attempts`,
+      });
+      return NextResponse.json({ error: "원고 생성에 실패했습니다. 잠시 후 다시 시도해주세요." }, { status: 502 });
     }
 
     const data = await response.json();
@@ -158,7 +189,7 @@ ${topic}
     }
 
     raw = text;
-    console.log("[generate-feed] Gemini 호출 성공, 응답 수신 완료");
+    console.log(`[generate-feed] Gemini 호출 성공, 응답 수신 완료 (총 ${attempt + 1}회 시도)`);
   } catch (err) {
     console.error("[generate-feed] Gemini 호출 중 예외 발생(네트워크/타임아웃 등)", err);
     await logGenerationToMake({ topic, status: "error", errorMessage: "gemini_fetch_exception" });
