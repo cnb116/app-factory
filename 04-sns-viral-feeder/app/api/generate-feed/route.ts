@@ -36,6 +36,27 @@ function stripMarkdown(text: string): string {
   return text.replace(/\*\*/g, "").replace(/[*_`#]/g, "").trim();
 }
 
+// 매 생성 요청(성공/실패 공통)을 Make.com으로 로깅한다. 웹훅 미설정이거나 전송 실패해도 본 기능(대본 생성) 자체는 절대 막지 않는다.
+async function logGenerationToMake(payload: { topic: string; status: "success" | "error"; errorMessage?: string }) {
+  const webhookUrl = process.env.MAKE_LOG_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  try {
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        app: "04-sns-viral-feeder",
+        event: "generate_feed",
+        timestamp: new Date().toISOString(),
+        ...payload,
+      }),
+    });
+  } catch (err) {
+    console.error("[generate-feed] Make.com 로그 웹훅 전송 실패", err);
+  }
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
@@ -116,6 +137,7 @@ ${topic}
     if (!response.ok) {
       const errBody = await response.text();
       console.error("[generate-feed] Gemini 호출 실패 — non-OK response", response.status, errBody);
+      await logGenerationToMake({ topic, status: "error", errorMessage: `gemini_non_ok_${response.status}` });
       return NextResponse.json({ error: "원고 생성에 실패했습니다." }, { status: 502 });
     }
 
@@ -124,6 +146,7 @@ ${topic}
 
     if (typeof text !== "string" || text.trim() === "") {
       console.error("[generate-feed] Gemini 응답에 후보 텍스트가 없음", JSON.stringify(data));
+      await logGenerationToMake({ topic, status: "error", errorMessage: "empty_candidate" });
       return NextResponse.json({ error: "생성 결과를 받지 못했습니다." }, { status: 502 });
     }
 
@@ -131,6 +154,7 @@ ${topic}
     console.log("[generate-feed] Gemini 호출 성공, 응답 수신 완료");
   } catch (err) {
     console.error("[generate-feed] Gemini 호출 중 예외 발생(네트워크/타임아웃 등)", err);
+    await logGenerationToMake({ topic, status: "error", errorMessage: "gemini_fetch_exception" });
     return NextResponse.json({ error: "잠시 후 다시 시도해주세요." }, { status: 500 });
   }
 
@@ -147,9 +171,11 @@ ${topic}
       commentDmTrigger: stripMarkdown(parsed.commentDmTrigger),
     };
     console.log("[generate-feed] JSON 파싱 성공");
+    await logGenerationToMake({ topic, status: "success" });
     return NextResponse.json({ feed });
   } catch (err) {
     console.error("[generate-feed] JSON 파싱 실패 — Gemini 응답이 유효한 JSON이 아님", raw, err);
+    await logGenerationToMake({ topic, status: "error", errorMessage: "json_parse_failed" });
     return NextResponse.json({ error: "결과 형식이 올바르지 않습니다." }, { status: 502 });
   }
 }
