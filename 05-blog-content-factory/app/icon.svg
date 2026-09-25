@@ -1,0 +1,13 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경: 검정 라운드 사각형 -->
+  <rect width="512" height="512" rx="96" fill="#000000"/>
+
+  <!-- 문서(블로그 포스팅) 아이콘 -->
+  <rect x="140" y="96" width="232" height="320" rx="20" fill="none" stroke="#FFD400" stroke-width="18"/>
+  <line x1="180" y1="176" x2="332" y2="176" stroke="#FFD400" stroke-width="16" stroke-linecap="round"/>
+  <line x1="180" y1="232" x2="332" y2="232" stroke="#FFD400" stroke-width="16" stroke-linecap="round"/>
+  <line x1="180" y1="288" x2="280" y2="288" stroke="#FFD400" stroke-width="16" stroke-linecap="round"/>
+
+  <!-- 하단 이미지 삽입 표시 -->
+  <rect x="180" y="330" width="152" height="56" rx="10" fill="#FFD400"/>
+</svg>
