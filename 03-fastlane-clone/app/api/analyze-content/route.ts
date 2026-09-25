@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGeminiApiKey, geminiEndpoint } from "@/lib/gemini";
-import { buildFallbackKeyword, extractTextFromHtml, validateCrawlUrl } from "@/lib/extractText";
+import { buildCrawlTargetUrl, buildFallbackKeyword, extractTextFromHtml, validateCrawlUrl } from "@/lib/extractText";
 import { ContentAnalysis } from "@/lib/types";
 
 const ANALYSIS_SCHEMA = {
@@ -40,11 +40,15 @@ export async function POST(request: NextRequest) {
   let pageText = "";
   let usedFallback = false;
 
-  console.log(`[analyze-content] 1/3 크롤링 시작: ${validUrl.toString()}`);
+  const crawlTargetUrl = buildCrawlTargetUrl(validUrl);
+  console.log(
+    `[analyze-content] 1/3 크롤링 시작: ${validUrl.toString()}` +
+      (crawlTargetUrl !== validUrl.toString() ? ` (네이버 블로그 감지 — 모바일 버전으로 대체 크롤링: ${crawlTargetUrl})` : "")
+  );
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
-    const pageResponse = await fetch(validUrl.toString(), {
+    const pageResponse = await fetch(crawlTargetUrl, {
       signal: controller.signal,
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; FastlaneCloneBot/1.0)",

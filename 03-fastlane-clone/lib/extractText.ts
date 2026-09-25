@@ -49,6 +49,18 @@ export function buildFallbackKeyword(url: URL): string {
   return [domainName, ...pathWords, ...searchWords].join(" ").trim();
 }
 
+// 네이버 블로그 PC 버전(blog.naver.com)은 프레임셋 구조라 최상위 HTML에 실제 본문이 없고(2~3KB짜리 빈 프레임 스켈레톤),
+// 진짜 글 내용은 모바일 버전(m.blog.naver.com)에 그대로 렌더링되어 있다. 크롤링 대상 URL만 모바일로 바꿔치기한다
+// (사용자에게 보여주는 sourceUrl은 원본 그대로 유지 — 이 함수는 fetch용으로만 쓴다).
+export function buildCrawlTargetUrl(url: URL): string {
+  if (url.hostname === "blog.naver.com" || url.hostname === "www.blog.naver.com") {
+    const mobileUrl = new URL(url.toString());
+    mobileUrl.hostname = "m.blog.naver.com";
+    return mobileUrl.toString();
+  }
+  return url.toString();
+}
+
 export function validateCrawlUrl(rawUrl: string): URL | null {
   try {
     const url = new URL(rawUrl);
