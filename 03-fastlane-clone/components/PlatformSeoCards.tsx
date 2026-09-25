@@ -18,10 +18,14 @@ function buildTiktokBlock(card: ScriptCard): string {
   return `${seoCaption}\n\n${hashtags.join(" ")}`;
 }
 
+// 결과 화면 단순화(2026-09-25) — 초보자 첫 성공 경험에 집중하기 위해 유튜브 쇼츠 단일 경로만 노출.
+// 인스타/틱톡 카드는 삭제하지 않고 이 플래그로만 숨겨둠 — true로 되돌리면 즉시 다시 노출된다.
+const SHOW_INSTAGRAM_TIKTOK_SEO = false;
+
 export default function PlatformSeoCards({ card }: { card: ScriptCard }) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-bold text-zinc-500">📦 채널별 SEO 메타데이터 (검색 최적화)</p>
+      <p className="text-sm font-bold text-zinc-500">📦 유튜브 쇼츠 SEO 메타데이터 (검색 최적화)</p>
 
       <PlatformCard label="유튜브 쇼츠 전용" emoji="▶️" copyText={buildYoutubeBlock(card)}>
         <MetaRow title="SEO 제목" value={card.youtubeSeo.seoTitle} />
@@ -29,16 +33,20 @@ export default function PlatformSeoCards({ card }: { card: ScriptCard }) {
         <MetaRow title="태그" value={card.youtubeSeo.tags.join(", ")} />
       </PlatformCard>
 
-      <PlatformCard label="인스타그램 릴스 전용" emoji="📸" copyText={buildInstagramBlock(card)}>
-        <MetaRow title="첫 줄 카피" value={card.instagramSeo.firstLine} />
-        <MetaRow title="본문" value={card.instagramSeo.body} />
-        <MetaRow title="해시태그" value={card.instagramSeo.hashtags.join(" ")} />
-      </PlatformCard>
+      {SHOW_INSTAGRAM_TIKTOK_SEO && (
+        <PlatformCard label="인스타그램 릴스 전용" emoji="📸" copyText={buildInstagramBlock(card)}>
+          <MetaRow title="첫 줄 카피" value={card.instagramSeo.firstLine} />
+          <MetaRow title="본문" value={card.instagramSeo.body} />
+          <MetaRow title="해시태그" value={card.instagramSeo.hashtags.join(" ")} />
+        </PlatformCard>
+      )}
 
-      <PlatformCard label="틱톡 전용" emoji="🎵" copyText={buildTiktokBlock(card)}>
-        <MetaRow title="검색 최적화 캡션" value={card.tiktokSeo.seoCaption} />
-        <MetaRow title="키워드 태그" value={card.tiktokSeo.hashtags.join(" ")} />
-      </PlatformCard>
+      {SHOW_INSTAGRAM_TIKTOK_SEO && (
+        <PlatformCard label="틱톡 전용" emoji="🎵" copyText={buildTiktokBlock(card)}>
+          <MetaRow title="검색 최적화 캡션" value={card.tiktokSeo.seoCaption} />
+          <MetaRow title="키워드 태그" value={card.tiktokSeo.hashtags.join(" ")} />
+        </PlatformCard>
+      )}
     </div>
   );
 }

@@ -21,9 +21,9 @@ export default function VrewRecipeCard({
   const [showTips, setShowTips] = useState(false);
 
   return (
-    <div className="rounded-xl bg-zinc-50 p-4">
+    <div className="rounded-xl border-2 border-black bg-zinc-50 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-bold text-zinc-500">🎬 35초 영상 대본</p>
+        <p className="text-base font-black text-black">🎬 35초 영상 대본 → Vrew 조립 → 유튜브 업로드</p>
         <div className="flex flex-wrap gap-2">
           <CopyButton text={copyText} label="Vrew용 자막 대본만 복사" />
           <a
@@ -40,7 +40,7 @@ export default function VrewRecipeCard({
       <div className="mb-3 rounded-lg border-2 border-black bg-white p-3">
         <ol className="flex flex-col gap-2 text-sm leading-snug text-black">
           <li>
-            <StepRow number={1}>Vrew에서 [텍스트로 비디오 만들기] 누르고 복사한 글 붙여넣기</StepRow>
+            <StepRow number={1}>대본 복사 — Vrew에서 [텍스트로 비디오 만들기] 누르고 붙여넣기</StepRow>
           </li>
           <li className="flex flex-col gap-1.5">
             <StepRow number={2}>[삽입]→[무료 비디오]에서 추천 검색어로 배경 채우기</StepRow>
@@ -55,8 +55,11 @@ export default function VrewRecipeCard({
           </li>
           <li>
             <StepRow number={3}>
-              15~30초 시연: 내 폰 녹화 화면 얹고, 자막 위치를 화면 위/아래로 살짝 옮기면 끝!
+              조립 — 15~30초 시연: 내 폰 녹화 화면 얹고, 자막 위치를 화면 위/아래로 살짝 옮기면 끝!
             </StepRow>
+          </li>
+          <li>
+            <StepRow number={4}>완성된 영상을 유튜브 스튜디오에 그대로 업로드!</StepRow>
           </li>
         </ol>
 

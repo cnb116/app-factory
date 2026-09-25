@@ -1,5 +1,9 @@
 "use client";
 
+// 결과 화면 단순화(2026-09-25) — 유튜브 쇼츠 단일 경로만 노출. 인스타/틱톡 버튼은 목록에서 삭제하지 않고
+// SHOW_ALL_UPLOAD_LINKS 플래그로만 걸러둠 — true로 되돌리면 즉시 다시 노출된다.
+const SHOW_ALL_UPLOAD_LINKS = false;
+
 const UPLOAD_LINKS = [
   { label: "유튜브 스튜디오", emoji: "▶️", url: "https://studio.youtube.com" },
   { label: "인스타 크리에이터 스튜디오", emoji: "📸", url: "https://business.facebook.com/creatorstudio" },
@@ -7,9 +11,11 @@ const UPLOAD_LINKS = [
 ];
 
 export default function UploadLinkButtons() {
+  const visibleLinks = SHOW_ALL_UPLOAD_LINKS ? UPLOAD_LINKS : UPLOAD_LINKS.filter((link) => link.url.includes("youtube"));
+
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {UPLOAD_LINKS.map((link) => (
+      {visibleLinks.map((link) => (
         <a
           key={link.url}
           href={link.url}
