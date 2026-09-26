@@ -52,6 +52,9 @@ export default function VrewRecipeCard({
                 5~15초: {painSearchKeyword}
               </span>
             </span>
+            <span className="ml-8 text-xs leading-relaxed text-zinc-600">
+              💡 인물이 나오는 배경영상은 국내 정서와 안 맞을 수 있어요. 사물·풍경 위주 검색어를 우선 추천드려요.
+            </span>
           </li>
           <li>
             <StepRow number={3}>
