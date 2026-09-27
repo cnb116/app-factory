@@ -10,6 +10,7 @@ import PlatformSeoCards from "./PlatformSeoCards";
 interface PackageStepProps {
   cards: ScriptCard[];
   onRestart: () => void;
+  hasUnlimitedAccess: boolean;
 }
 
 function buildFullScript(card: ScriptCard): string {
@@ -34,7 +35,7 @@ function buildCaptionBlock(card: ScriptCard): string {
   return `${card.caption}\n\n${card.hashtags.join(" ")}`;
 }
 
-export default function PackageStep({ cards, onRestart }: PackageStepProps) {
+export default function PackageStep({ cards, onRestart, hasUnlimitedAccess }: PackageStepProps) {
   if (cards.length === 0) {
     return (
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-6 px-5 py-10 text-center">
@@ -57,9 +58,12 @@ export default function PackageStep({ cards, onRestart }: PackageStepProps) {
         <p className="mt-1 text-base text-zinc-600">항목마다 복사해서 바로 쓰세요</p>
       </div>
 
-      <div className="flex flex-col items-center gap-2">
-        <ProPassPaymentButton />
-      </div>
+      {/* 7일 매직링크(무제한 이용)가 활성 상태일 때는 "무료인데 왜 결제하라고 하지?" 혼란을 막기 위해 결제 캡슐을 숨긴다. */}
+      {!hasUnlimitedAccess && (
+        <div className="flex flex-col items-center gap-2">
+          <ProPassPaymentButton />
+        </div>
+      )}
 
       {cards.map((card, i) => (
         <div key={card.id} className="flex flex-col gap-4 rounded-2xl border-2 border-black bg-white p-5 shadow-xl">

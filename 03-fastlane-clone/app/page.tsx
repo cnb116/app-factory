@@ -125,7 +125,9 @@ export default function Home() {
         <SwipeStep card={cards[swipeIndex]} index={swipeIndex} total={cards.length} onDecision={handleDecision} />
       )}
 
-      {phase === "package" && <PackageStep cards={accepted} onRestart={handleRestart} />}
+      {phase === "package" && (
+        <PackageStep cards={accepted} onRestart={handleRestart} hasUnlimitedAccess={magicPassDaysRemaining !== null} />
+      )}
 
       <CallFloatingButton />
 
