@@ -230,6 +230,15 @@ export default function Home() {
           isLoading={isCorrecting}
           loadingText="교정 중..."
         />
+
+        <a
+          href="https://03-fastlane-clone.vercel.app/?utm_source=01ho&utm_medium=app_link&utm_campaign=cross_promo"
+          target="_blank"
+          rel="noopener"
+          className="text-center text-sm text-zinc-500 transition hover:text-black"
+        >
+          숏폼 영상 대본이 필요하세요? → <span className="font-bold text-black">숏폼 대본 공장</span> (URL 하나로 대본 10편, 첫 1회 무료)
+        </a>
       </div>
     </div>
   );
