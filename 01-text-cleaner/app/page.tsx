@@ -6,6 +6,9 @@ import { DiffToken, diffWords, hasLongDigitRun } from "@/lib/diff";
 import { CleanStats, cleanTextWithStats } from "@/lib/textClean";
 import { consumeFreeUse, getRemainingFreeUses } from "@/lib/usage";
 
+// 3,900원 유료 캡슐을 화면에서만 숨긴다. 코드는 남겨두고, 나중에 유료로 되살릴 때 이 값만 true로 바꾸면 된다.
+const SHOW_PREMIUM_CAPSULE = false;
+
 function buildCleanSummary(stats: CleanStats): string {
   const { charsBefore, charsAfter, charsReduced, spacesRemoved, lineBreaksRemoved } = stats;
   const changeLabel =
@@ -83,7 +86,7 @@ export default function Home() {
 
     const currentRemaining = getRemainingFreeUses();
     if (currentRemaining <= 0) {
-      alert("결제 준비 중입니다");
+      alert("오늘 무료 횟수를 모두 사용했어요. 내일 다시 이용해 주세요.");
       return;
     }
 
@@ -222,14 +225,24 @@ export default function Home() {
         <p className="text-center text-base font-semibold text-zinc-500">
           오늘 남은 무료 횟수: {remaining === null ? "-" : `${remaining}회`}
         </p>
-        <PremiumCapsule
-          description="프리미엄 확장팩 (AI 맞춤법 교정 평생 사용)"
-          price="3,900원"
-          onClick={handlePremiumClick}
-          disabled={isCorrecting}
-          isLoading={isCorrecting}
-          loadingText="교정 중..."
-        />
+        {SHOW_PREMIUM_CAPSULE ? (
+          <PremiumCapsule
+            description="프리미엄 확장팩 (AI 맞춤법 교정 평생 사용)"
+            price="3,900원"
+            onClick={handlePremiumClick}
+            disabled={isCorrecting}
+            isLoading={isCorrecting}
+            loadingText="교정 중..."
+          />
+        ) : (
+          <button
+            onClick={handlePremiumClick}
+            disabled={isCorrecting}
+            className="w-full rounded-xl border-2 border-black bg-white py-3 text-lg font-bold text-black shadow transition active:scale-95 disabled:opacity-40"
+          >
+            {isCorrecting ? "교정 중..." : "AI 맞춤법 교정 (무료)"}
+          </button>
+        )}
 
         <a
           href="https://03-fastlane-clone.vercel.app/?utm_source=01ho&utm_medium=app_link&utm_campaign=cross_promo"
