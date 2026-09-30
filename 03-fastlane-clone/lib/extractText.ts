@@ -33,7 +33,8 @@ function isPrivateHost(hostname: string): boolean {
   return false;
 }
 
-export function buildFallbackKeyword(url: URL): string {
+export function buildFallbackKeyword(url: URL, options: { includeSearch?: boolean } = {}): string {
+  const { includeSearch = true } = options;
   const hostParts = url.hostname.replace(/^www\./, "").split(".");
   const domainName = hostParts.length > 2 ? hostParts.slice(0, -2).join(".") : hostParts[0];
 
@@ -41,10 +42,15 @@ export function buildFallbackKeyword(url: URL): string {
     .split(/[/\-_.]+/)
     .filter((w) => w && !/^\d+$/.test(w));
 
-  const searchWords = decodeURIComponent(url.search)
-    .replace(/^\?/, "")
-    .split(/[=&]+/)
-    .filter((w) => w && !/^\d+$/.test(w));
+  // 쿠팡파트너스 같은 단축 링크는 리다이렉트 이후 최종 URL의 쿼리스트링이 트래킹 파라미터(traceid, mcid, wPcid 등
+  // 의미 없는 긴 해시값)로 가득 차 있어, 그대로 키워드에 섞으면 오히려 Gemini가 엉뚱하게 추론할 노이즈가 된다.
+  // 이런 경우 호출부에서 includeSearch: false로 넘겨 쿼리스트링은 아예 배제한다.
+  const searchWords = includeSearch
+    ? decodeURIComponent(url.search)
+        .replace(/^\?/, "")
+        .split(/[=&]+/)
+        .filter((w) => w && !/^\d+$/.test(w))
+    : [];
 
   return [domainName, ...pathWords, ...searchWords].join(" ").trim();
 }

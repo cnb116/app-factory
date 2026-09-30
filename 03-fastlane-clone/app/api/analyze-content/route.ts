@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
 
   let pageText = "";
   let usedFallback = false;
+  let fallbackSourceUrl: URL | null = null;
 
   const crawlTargetUrl = buildCrawlTargetUrl(validUrl);
   console.log(
@@ -56,9 +57,25 @@ export async function POST(request: NextRequest) {
     });
     clearTimeout(timeout);
 
+    if (pageResponse.redirected) {
+      console.log(`[analyze-content] 리다이렉트 감지 — 최종 도달 URL: ${pageResponse.url}`);
+    }
+
     if (!pageResponse.ok) {
       console.error(`[analyze-content] 크롤링 실패 — HTTP ${pageResponse.status}, URL 키워드로 대체합니다.`);
       usedFallback = true;
+      // 쿠팡파트너스(link.coupang.com) 같은 단축 링크는 최종 목적지(www.coupang.com/vp/products/...)까지는
+      // fetch가 리다이렉트를 정상적으로 따라가지만, 그 최종 목적지 자체를 Akamai 등 상용 봇 차단이 막아 403을 준다.
+      // 이 경우 원래의 의미 없는 단축 URL(예: "link a hs2tqYYPu1") 대신, 리다이렉트로 도달한 실제 상품 URL의
+      // 도메인·경로(쿼리스트링의 트래킹 파라미터는 제외)를 fallback 키워드로 써서 최소한 "쿠팡 상품 페이지"라는
+      // 맥락은 Gemini에게 전달한다.
+      if (pageResponse.redirected) {
+        try {
+          fallbackSourceUrl = new URL(pageResponse.url);
+        } catch {
+          // 파싱 실패 시 원본 URL 그대로 사용
+        }
+      }
     } else {
       const html = await pageResponse.text();
       pageText = extractTextFromHtml(html).slice(0, 8000);
@@ -76,12 +93,16 @@ export async function POST(request: NextRequest) {
   }
 
   if (usedFallback) {
-    pageText = buildFallbackKeyword(validUrl);
+    pageText = fallbackSourceUrl
+      ? buildFallbackKeyword(fallbackSourceUrl, { includeSearch: false })
+      : buildFallbackKeyword(validUrl);
     console.log(`[analyze-content] 대체 키워드로 진행: "${pageText}"`);
   }
 
   const prompt = usedFallback
     ? `너는 숏폼 바이럴 마케팅 전문 분석가다. 아래는 어떤 웹페이지의 URL에서 뽑아낸 도메인명/경로 키워드다(페이지 본문을 직접 가져오지 못해 키워드만 있음).
+
+[주의 — 반드시 지킬 것] 이 키워드만으로는 실제 상품·서비스가 무엇인지 알 수 없는 경우가 많다(예: 쇼핑몰의 짧은 상품 ID만 남는 경우). 키워드에 없는 구체적인 업종(예: "대출", "보험", "부동산" 등)이나 제품명을 절대 지어내지 않는다. 키워드에 쇼핑몰 도메인(쿠팡, 스마트스토어 등)이 보이면 "온라인 쇼핑몰에서 판매하는 실물 상품"이라는 일반적인 범위 안에서만 추론하고, 구체적인 상품 카테고리를 확신할 수 없으면 targetAudience/coreOffer를 "이 상품에 관심 있을 법한 일반 소비자" 수준으로 보수적으로 작성한다.
 
 이 키워드로 이 페이지가 어떤 제품/서비스인지 최대한 합리적으로 추론해서 다음을 분석해줘:
 1. targetAudience: 이 콘텐츠/제품/서비스가 노릴 법한 핵심 타깃 고객 (구체적인 특징으로, 한 문장)
