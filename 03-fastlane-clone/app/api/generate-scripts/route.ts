@@ -75,6 +75,13 @@ function diversifyCtaOpeners(cards: ScriptCard[]): { cards: ScriptCard[]; replac
     const newSubject = pickDifferent(CTA_SUBJECT_POOL, info.subjectMatch[0], subjectCursor);
     cta = cta.replace(CTA_SUBJECT_REGEX, newSubject);
 
+    // 원문에 연결어가 이미 2번 이상 있었던 경우(예: "...함께 ... 함께 써봅시다") 첫 번째만 바꾸면
+    // "함께 함께"처럼 어색하게 붙어버릴 수 있다. 이런 부작용이 생기면 치환을 포기하고 원문을 그대로 둔다
+    // — 쏠림보다 문법이 깨지는 게 더 나쁘다.
+    if (/(함께|같이|모두)\s+(함께|같이|모두)/.test(cta)) {
+      return card;
+    }
+
     replacedCount++;
     return { ...card, cta };
   });
