@@ -16,6 +16,72 @@ const HOOK_STRUCTURES = [
   "넓은 감정형 — 업종과 무관하게 누구나 겪는 넓은 감정(뭔가 준비하다가 시간만 잡아먹힌 경험, 말로 설명하는 게 지겨워진 순간 등)으로 시작",
 ];
 
+// CTA는 "통일성(연대감) 원리" 때문에 "우리 ... 함께/같이/모두 ~해봅시다" 류의 연대감 표현이 반복되기 쉽다.
+// 주어(우리/다들/여러분)와 연결어(함께/같이/모두)는 "우리 함께 ~"처럼 붙어 있을 때도 있고,
+// "우리 더 이상 ~하지 말고 같이 ~해봅시다"처럼 문장 안에서 서로 떨어져 있을 때도 있어서,
+// 구문(phrase) 단위로 매칭하면 Gemini가 문장 구조를 바꿀 때마다 쉽게 놓친다. 그래서 두 단어를
+// 각각 독립적으로(문장 어디에 있든) 찾아 따로 치환하는 방식을 쓴다 — 어떤 문장 구조든 안정적으로 잡아낸다.
+// 프롬프트 지시("매번 다르게 쓰라")만으로는 어휘 수준 다양화는 되지만 이 패턴 자체의 반복까지는
+// 못 막는다는 게 실제 생성 결과로 여러 번 확인되어, 생성이 끝난 뒤 코드로 쏠림을 검사하고 초과분만
+// 결정론적으로 바꿔치기한다(추가 Gemini 호출 없음 — 실패 지점을 늘리지 않기 위해 템플릿 치환 방식을 택했다).
+// 치환 대상 단어 외의 나머지 문장(의미, 희소성 문구)은 그대로 유지한다.
+const CTA_SUBJECT_REGEX = /우리|다들|여러분/;
+const CTA_CONNECTOR_WORD_REGEX = /(?<!똑)함께|(?<!똑)같이|모두/;
+const CTA_SUBJECT_POOL = ["우리", "다들", "여러분도"];
+const CTA_CONNECTOR_POOL = ["함께", "같이"];
+
+function pickDifferent(pool: string[], exclude: string, cursor: { i: number }): string {
+  let candidate = pool[cursor.i % pool.length];
+  cursor.i++;
+  while (candidate === exclude) {
+    candidate = pool[cursor.i % pool.length];
+    cursor.i++;
+  }
+  return candidate;
+}
+
+// 10편 중 "주어+연결어"가 둘 다 있는 연대감 톤 CTA가 40%(기본 4편)를 넘으면, 처음 등장한 것들은
+// 그대로 두고 그 이후(5번째~)만 주어·연결어 단어를 다른 연대감 표현으로 교체한다.
+function diversifyCtaOpeners(cards: ScriptCard[]): { cards: ScriptCard[]; replacedCount: number } {
+  const infos = cards.map((card) => {
+    const subjectMatch = card.cta.match(CTA_SUBJECT_REGEX);
+    const connectorMatch = card.cta.match(CTA_CONNECTOR_WORD_REGEX);
+    return { hasPattern: Boolean(subjectMatch && connectorMatch), subjectMatch, connectorMatch };
+  });
+  const matchedCount = infos.filter((info) => info.hasPattern).length;
+  const threshold = Math.max(1, Math.ceil(cards.length * 0.4));
+
+  if (matchedCount <= threshold) {
+    return { cards, replacedCount: 0 };
+  }
+
+  let keepBudget = threshold;
+  const subjectCursor = { i: 0 };
+  const connectorCursor = { i: 0 };
+  let replacedCount = 0;
+
+  const result = cards.map((card, idx) => {
+    const info = infos[idx];
+    if (!info.hasPattern || !info.subjectMatch || !info.connectorMatch) return card;
+
+    if (keepBudget > 0) {
+      keepBudget--;
+      return card;
+    }
+
+    let cta = card.cta;
+    const newConnector = pickDifferent(CTA_CONNECTOR_POOL, info.connectorMatch[0], connectorCursor);
+    cta = cta.replace(CTA_CONNECTOR_WORD_REGEX, newConnector);
+    const newSubject = pickDifferent(CTA_SUBJECT_POOL, info.subjectMatch[0], subjectCursor);
+    cta = cta.replace(CTA_SUBJECT_REGEX, newSubject);
+
+    replacedCount++;
+    return { ...card, cta };
+  });
+
+  return { cards: result, replacedCount };
+}
+
 const SCRIPT_SCHEMA = {
   type: "ARRAY",
   items: {
@@ -142,9 +208,12 @@ painAgitation에서 고른 감정 축은 demoGuide의 효과 설명(시간이 �
 - thumbnailLine1, thumbnailLine2: 영상 0초에 화면에 크게 뜨는 썸네일 볼드 문구 2줄 (각 줄 12자 이내, 강렬하게)
 - hookLine: 영상 시작 0~5초에 화자가 실제로 말하는 훅 대사. 온전한 문장 1개 (위 자막 문장 규칙 적용)
   [호감(공감) 원리 — 반드시 지킬 것] 시청자를 질책하거나 지적하는 표현("~하는 분들, 그거 핑계입니다", "왜 안 하십니까", "형님들이 왜 못 합니까" 같은 훈계·질책 톤)은 절대 쓰지 않는다. 대신 화자가 자기 경험을 먼저 고백하는 형태로 시작한다 (예: "저도 처음엔 ○○ 때문에 몇 개월을 미뤘습니다." 처럼, 청자가 아니라 화자 자신의 과거 이야기로 문을 연다).
-  [넓은 소재 우선 원칙 — "넓은 감정형", "통계 충격형", "타겟 저격형"을 제외한 나머지 8종 스타일에는 기본값으로 적용] 이 8종의 hookLine은 기본이 "넓게"다 — 좁게 써야 할 특별한 이유가 없는 한 업종과 무관한 넓은 상황으로 연다. 방법: hookLine 문장 안에 "${analysis.targetAudience}"나 [분석된 콘텐츠 정보]에만 등장하는 구체적인 도구명·서비스명·행동명(예: 카카오톡, 메모장, 블로그, 크리에이터, 쇼핑몰, 사장님 등)을 직접 쓰지 않는다. 대신 그 도구·행동이 유발하는 보편적 감정(시간 낭비, 돈 낭비, 막막함, 결정 장애, 미루는 습관, 자괴감 등)으로 바꿔서 표현한다.
-    - 나쁜 예(너무 좁음): "카카오톡이나 메모장에서 복사한 지저분한 텍스트를 언제까지 일일이 수정하고 계실 건가요?"
-    - 좋은 예(넓게 열림): "뭔가 정리해서 남한테 보여줘야 하는데, 늘 손이 많이 가서 자꾸 미루게 되는 거 있으시죠?"
+  [넓은 소재 우선 원칙 — "넓은 감정형", "통계 충격형", "타겟 저격형"을 제외한 나머지 8종(충격 고백형, 극단적 대조형, 경고형, 질문 도발형, 반전 서사형, 비밀 공개형, 실패담 공감형, 초스피드 해결형) 중 최소 3종은 반드시 지킬 것 — 선택이 아니라 최소 요건] 이 8종 중 최소 3종 이상의 hookLine에는 "${analysis.targetAudience}"나 [분석된 콘텐츠 정보]에만 등장하는 구체적인 도구명·서비스명·행동명(예: 카카오톡, 메모장, 블로그, 크리에이터, 쇼핑몰, 사장님, 보고서, 원고 등)을 단 하나도 쓰지 않는다. 대신 그 도구·행동이 유발하는 보편적 감정(시간 낭비, 돈 낭비, 막막함, 결정 장애, 미루는 습관, 자괴감 등)만으로 연다. 10편을 다 쓴 뒤 스스로 "이 8종 중 도구명이 하나도 없는 hookLine이 3편 이상인가?"를 확인하고, 아니라면 일부를 다시 넓게 고쳐라.
+    - 나쁜 예(금지): "카카오톡이나 메모장에서 복사한 지저분한 텍스트를 언제까지 일일이 수정하고 계실 건가요?"
+    - 나쁜 예(금지): "메모장에 쓴 글을 블로그나 보고서에 옮길 때마다 엉망이 된 줄바꿈을 언제까지 직접 지우고 계실 건가요?"
+    - 나쁜 예(금지): "블로그 원고나 보고서를 매일 작성하면서 텍스트 정리 때문에 머리가 아프신 분들만..."
+    - 좋은 예(이렇게 열 것): "뭔가 정리해서 남한테 보여줘야 하는데, 늘 손이 많이 가서 자꾸 미루게 되는 거 있으시죠?"
+    - 좋은 예(이렇게 열 것): "뭔가 하나 끝내놓고 싶었는데 자잘한 손길이 너무 많이 가서 지쳐버린 적 있으신가요?"
   hookLine이 이렇게 넓게 열려도 painAgitation부터는 반드시 [분석된 콘텐츠 정보]의 실제 타깃/고통/도구로 자연스럽게 좁혀 들어가며 본 서비스로 이어간다.
   [넓은 감정형 전용 규칙 — hookType을 "넓은 감정형"으로 쓴 편에서만 반드시 지킬 것] hookLine에 "숏폼", "대본", "쇼츠", "영상"이라는 단어를 절대 쓰지 않는다. 특정 업종·콘텐츠 제작을 연상시키는 표현 대신, "뭔가 준비하다가 시간만 잡아먹힌 경험", "말로 설명하는 게 지겨워진 순간"처럼 업종과 무관하게 누구나 겪어봤을 법한 넓은 감정 하나로 문을 연다. painAgitation부터는 다른 스타일과 동일하게 이 서비스가 해결하는 구체적인 고통으로 자연스럽게 좁혀가고, demoGuide에서는 "그래서 요즘은 이 방법을 씁니다"처럼 자연스러운 연결 문장으로 본 서비스 시연으로 이어간다.
 - hookSearchKeyword: 0~5초 구간에 깔릴 배경 영상을 Vrew의 내장 무료 비디오 라이브러리에서 검색할 한글 키워드 딱 1단어 (hookLine 내용과 어울리는 장면을 상상할 수 있는 구체적인 명사 하나)
@@ -220,8 +289,14 @@ Vrew 무료 스톡 영상은 해외 소스가 많아서, 인물이 등장하는 
   console.log("[generate-scripts] 2/2 JSON 파싱 시작");
   try {
     const parsed = JSON.parse(raw) as Omit<ScriptCard, "id">[];
-    const cards: ScriptCard[] = parsed.map((card, i) => ({ ...card, id: String(i + 1) }));
-    console.log(`[generate-scripts] JSON 파싱 성공 — ${cards.length}편 생성됨`);
+    const rawCards: ScriptCard[] = parsed.map((card, i) => ({ ...card, id: String(i + 1) }));
+    console.log(`[generate-scripts] JSON 파싱 성공 — ${rawCards.length}편 생성됨`);
+
+    const { cards, replacedCount } = diversifyCtaOpeners(rawCards);
+    if (replacedCount > 0) {
+      console.log(`[generate-scripts] CTA 시작 어구 쏠림 감지 — ${replacedCount}편의 시작 어구를 후처리로 교체함`);
+    }
+
     return NextResponse.json({ cards });
   } catch (err) {
     console.error("[generate-scripts] JSON 파싱 실패 — Gemini 응답이 유효한 JSON이 아님", raw, err);
