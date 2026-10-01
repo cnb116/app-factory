@@ -16,6 +16,203 @@ const HOOK_STRUCTURES = [
   "넓은 감정형 — 업종과 무관하게 누구나 겪는 넓은 감정(뭔가 준비하다가 시간만 잡아먹힌 경험, 말로 설명하는 게 지겨워진 순간 등)으로 시작",
 ];
 
+// "넓은 감정형" 훅은 프롬프트에 "최소 3종 필수"를 명시해도 실제 생성에서 0편이 나오는 경우가 반복 확인되어
+// (CTA 반복 문제와 동일한 패턴 — 프롬프트 지시만으로는 구조적 보장이 안 됨), 생성 직후 코드로 개수를 집계하고
+// 부족하면 다른 대본의 "훅 구간만"(hookType/썸네일/hookLine/hookSearchKeyword) 넓은 감정형으로 다시 쓰게 한다.
+// painAgitation부터 이어지는 본문·CTA·SEO 메타데이터는 그대로 유지한다.
+const BROAD_HOOK_TYPE = "넓은 감정형";
+const PROTECTED_HOOK_TYPE = "타겟 저격형"; // 최소 1편 보장 규칙을 깨지 않도록 교체 후보에서 최대한 제외
+const MIN_BROAD_HOOK = 3; // 10편 기준 최소 보장 개수
+const MIN_BROAD_HOOK_BASE_COUNT = 10;
+
+function getMinBroadHookCount(totalCards: number): number {
+  if (totalCards <= 0) return 0;
+  return Math.max(1, Math.round((MIN_BROAD_HOOK / MIN_BROAD_HOOK_BASE_COUNT) * totalCards));
+}
+
+// 교체할 카드를 고른다: 이미 넓은 감정형인 카드는 건드리지 않고, 타겟 저격형은 최소 1편이 남도록 보호한 뒤
+// 그 외 스타일부터 우선적으로 채워 넣는다. 교체 가능한 카드가 부족하면 있는 만큼만 선택한다(강제로 규칙을 깨지 않음).
+function selectCardsForBroadHookConversion(
+  cards: ScriptCard[],
+  neededCount: number
+): number[] {
+  const protectedTargetedBudget = Math.min(1, cards.filter((c) => c.hookType === PROTECTED_HOOK_TYPE).length);
+  let targetedProtectedRemaining = protectedTargetedBudget;
+
+  const nonTargetedIndexes: number[] = [];
+  const targetedIndexes: number[] = [];
+
+  cards.forEach((card, i) => {
+    if (card.hookType === BROAD_HOOK_TYPE) return;
+    if (card.hookType === PROTECTED_HOOK_TYPE) {
+      targetedIndexes.push(i);
+    } else {
+      nonTargetedIndexes.push(i);
+    }
+  });
+
+  const selected: number[] = [];
+  for (const i of nonTargetedIndexes) {
+    if (selected.length >= neededCount) break;
+    selected.push(i);
+  }
+  for (const i of targetedIndexes) {
+    if (selected.length >= neededCount) break;
+    // 타겟 저격형 보호분(최소 1편)을 깎아 먹지 않는 한도 내에서만 추가로 교체 후보에 포함한다.
+    if (targetedIndexes.length - targetedProtectedRemaining <= 0) break;
+    targetedProtectedRemaining -= 1;
+    selected.push(i);
+  }
+
+  return selected;
+}
+
+interface BroadHookFields {
+  hookType: string;
+  thumbnailLine1: string;
+  thumbnailLine2: string;
+  hookLine: string;
+  hookSearchKeyword: string;
+}
+
+const BROAD_HOOK_SCHEMA = {
+  type: "ARRAY",
+  items: {
+    type: "OBJECT",
+    properties: {
+      hookType: { type: "STRING" },
+      thumbnailLine1: { type: "STRING" },
+      thumbnailLine2: { type: "STRING" },
+      hookLine: { type: "STRING" },
+      hookSearchKeyword: { type: "STRING" },
+    },
+    required: ["hookType", "thumbnailLine1", "thumbnailLine2", "hookLine", "hookSearchKeyword"],
+  },
+};
+
+function buildBroadHookPrompt(analysis: Partial<ContentAnalysis>, cardsToConvert: ScriptCard[]): string {
+  const painPoints = Array.isArray(analysis.painPoints) ? analysis.painPoints.join(" / ") : "";
+  const items = cardsToConvert
+    .map(
+      (card, i) =>
+        `${i + 1}. 이어지는 painAgitation(참고용 — 이 문장으로 자연스럽게 연결되도록 훅을 써라): "${card.painAgitation}"`
+    )
+    .join("\n");
+
+  return `너는 숏폼 바이럴 대본의 "훅(hook)" 구간만 다시 쓰는 전문가다.
+
+[분석된 콘텐츠 정보]
+- 타깃 고객: ${analysis.targetAudience ?? ""}
+- 핵심 고통(Pain Point): ${painPoints}
+- 핵심 제공 가치: ${analysis.coreOffer ?? ""}
+
+아래 ${cardsToConvert.length}개 대본의 훅을 전부 "넓은 감정형" 스타일로 새로 써라. 각 대본에 바로 이어지는 painAgitation은 그대로 유지되니, 새 훅이 그 문장으로 자연스럽게 이어지도록 써야 한다.
+
+[넓은 감정형 스타일 정의 — 반드시 지킬 것]
+업종과 무관하게 누구나 겪는 넓은 감정(뭔가 준비하다가 시간만 잡아먹힌 경험, 말로 설명하는 게 지겨워진 순간 등)으로 연다.
+- hookLine에 "숏폼", "대본", "쇼츠", "영상"이라는 단어를 절대 쓰지 않는다.
+- "${analysis.targetAudience ?? ""}"나 [분석된 콘텐츠 정보]에만 등장하는 구체적인 도구명·서비스명·업종명을 쓰지 않는다. 보편적 감정만으로 연다.
+- 마침표(.)나 느낌표(!)로 끝나는 온전한 문장 1개. 문장 중간에 줄바꿈을 넣지 않는다.
+- 이 프롬프트의 예시 문장을 그대로 베끼지 않는다.
+예시(참고용, 베끼지 말 것): "뭔가 정리해서 남한테 보여줘야 하는데, 늘 손이 많이 가서 자꾸 미루게 되는 거 있으시죠?"
+
+[다시 써야 할 대본 목록]
+${items}
+
+각 항목마다 다음을 채워 배열로 반환해줘 (순서는 위 목록 순서 그대로):
+- hookType: 항상 "넓은 감정형" 고정
+- thumbnailLine1, thumbnailLine2: 영상 0초에 화면에 크게 뜨는 썸네일 볼드 문구 2줄 (각 줄 12자 이내)
+- hookLine: 위 규칙을 지킨 새 훅 대사
+- hookSearchKeyword: Vrew 무료 비디오 라이브러리에서 검색할 한글 키워드 1단어 (무인물 또는 신체 일부 클로즈업 위주 — 예: "시계", "타이핑", "빈 사무실")`;
+}
+
+// 넓은 감정형 비율이 기준 미달이면 부족분만큼만 묶어서 Gemini에 재요청한다(요청 1회로 최소화).
+// 재요청이 실패(네트워크 오류, 응답 형식 불일치 등)하면 원본 cards를 그대로 반환해 전체 생성이 깨지지 않게 한다.
+async function enforceMinBroadHookRatio(
+  cards: ScriptCard[],
+  analysis: Partial<ContentAnalysis>,
+  apiKey: string
+): Promise<{ cards: ScriptCard[]; convertedCount: number; geminiCallMade: boolean }> {
+  const currentBroadCount = cards.filter((c) => c.hookType === BROAD_HOOK_TYPE).length;
+  const minRequired = getMinBroadHookCount(cards.length);
+  const shortfall = minRequired - currentBroadCount;
+
+  if (shortfall <= 0) {
+    return { cards, convertedCount: 0, geminiCallMade: false };
+  }
+
+  const targetIndexes = selectCardsForBroadHookConversion(cards, shortfall);
+  if (targetIndexes.length === 0) {
+    console.warn("[generate-scripts] 넓은 감정형 부족하지만 교체 가능한 카드가 없어 보정을 건너뜀");
+    return { cards, convertedCount: 0, geminiCallMade: false };
+  }
+
+  const cardsToConvert = targetIndexes.map((i) => cards[i]);
+  const prompt = buildBroadHookPrompt(analysis, cardsToConvert);
+
+  try {
+    const response = await fetch(geminiEndpoint(apiKey), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: BROAD_HOOK_SCHEMA,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      console.error("[generate-scripts] 넓은 감정형 보정 호출 실패 — non-OK response", response.status, errBody);
+      return { cards, convertedCount: 0, geminiCallMade: true };
+    }
+
+    const data = await response.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (typeof text !== "string" || text.trim() === "") {
+      console.error("[generate-scripts] 넓은 감정형 보정 응답에 후보 텍스트가 없음");
+      return { cards, convertedCount: 0, geminiCallMade: true };
+    }
+
+    const parsed = JSON.parse(text) as BroadHookFields[];
+    if (!Array.isArray(parsed) || parsed.length !== targetIndexes.length) {
+      console.error(
+        `[generate-scripts] 넓은 감정형 보정 응답 개수 불일치 — 기대 ${targetIndexes.length}, 실제 ${Array.isArray(parsed) ? parsed.length : "배열 아님"}`
+      );
+      return { cards, convertedCount: 0, geminiCallMade: true };
+    }
+
+    const updated = [...cards];
+    targetIndexes.forEach((cardIndex, i) => {
+      const newHook = parsed[i];
+      if (
+        !newHook ||
+        typeof newHook.hookLine !== "string" ||
+        typeof newHook.thumbnailLine1 !== "string" ||
+        typeof newHook.thumbnailLine2 !== "string" ||
+        typeof newHook.hookSearchKeyword !== "string"
+      ) {
+        return; // 이 카드만 원본 유지, 나머지는 정상 반영
+      }
+      updated[cardIndex] = {
+        ...updated[cardIndex],
+        hookType: BROAD_HOOK_TYPE,
+        thumbnailLine1: newHook.thumbnailLine1,
+        thumbnailLine2: newHook.thumbnailLine2,
+        hookLine: newHook.hookLine,
+        hookSearchKeyword: newHook.hookSearchKeyword,
+      };
+    });
+
+    return { cards: updated, convertedCount: targetIndexes.length, geminiCallMade: true };
+  } catch (err) {
+    console.error("[generate-scripts] 넓은 감정형 보정 중 예외 발생 — 원본 유지", err);
+    return { cards, convertedCount: 0, geminiCallMade: true };
+  }
+}
+
 // CTA는 "통일성(연대감) 원리" 때문에 "우리 ... 함께/같이/모두 ~해봅시다" 류의 연대감 표현이 반복되기 쉽다.
 // 주어(우리/다들/여러분)와 연결어(함께/같이/모두)는 "우리 함께 ~"처럼 붙어 있을 때도 있고,
 // "우리 더 이상 ~하지 말고 같이 ~해봅시다"처럼 문장 안에서 서로 떨어져 있을 때도 있어서,
@@ -299,7 +496,18 @@ Vrew 무료 스톡 영상은 해외 소스가 많아서, 인물이 등장하는 
     const rawCards: ScriptCard[] = parsed.map((card, i) => ({ ...card, id: String(i + 1) }));
     console.log(`[generate-scripts] JSON 파싱 성공 — ${rawCards.length}편 생성됨`);
 
-    const { cards, replacedCount } = diversifyCtaOpeners(rawCards);
+    // 1) 훅 보정: 넓은 감정형 최소 비율 미달 시 부족분만큼 묶어서 재요청
+    const broadHookResult = await enforceMinBroadHookRatio(rawCards, analysis, apiKey);
+    if (broadHookResult.convertedCount > 0) {
+      console.log(
+        `[generate-scripts] 넓은 감정형 부족 감지 — ${broadHookResult.convertedCount}편의 훅을 넓은 감정형으로 재생성함`
+      );
+    } else if (broadHookResult.geminiCallMade) {
+      console.warn("[generate-scripts] 넓은 감정형 보정 호출은 했으나 반영 실패 — 원본 훅 유지");
+    }
+
+    // 2) CTA 후처리: 시작 어구 쏠림 교체 (훅 보정 다음 순서로 실행)
+    const { cards, replacedCount } = diversifyCtaOpeners(broadHookResult.cards);
     if (replacedCount > 0) {
       console.log(`[generate-scripts] CTA 시작 어구 쏠림 감지 — ${replacedCount}편의 시작 어구를 후처리로 교체함`);
     }
