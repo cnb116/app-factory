@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGeminiApiKey, geminiEndpoint } from "@/lib/gemini";
-import { buildCrawlTargetUrl, buildFallbackKeyword, extractTextFromHtml, validateCrawlUrl } from "@/lib/extractText";
+import {
+  buildCrawlTargetUrl,
+  buildFallbackKeyword,
+  extractTextFromHtml,
+  isNaverBlogListUrl,
+  validateCrawlUrl,
+} from "@/lib/extractText";
 import { ContentAnalysis } from "@/lib/types";
 
 const ANALYSIS_SCHEMA = {
@@ -35,6 +41,17 @@ export async function POST(request: NextRequest) {
   const validUrl = validateCrawlUrl(url.trim());
   if (!validUrl) {
     return NextResponse.json({ error: "올바른 URL 형식이 아닙니다." }, { status: 400 });
+  }
+
+  if (isNaverBlogListUrl(validUrl)) {
+    console.error(`[analyze-content] 네이버 블로그 홈/목록형 URL 감지 — 크롤링 없이 안내 메시지로 응답: ${validUrl.toString()}`);
+    return NextResponse.json(
+      {
+        error:
+          "이 주소는 블로그 전체 글 목록(홈) 주소로 보입니다. 이 상태로는 AI가 어떤 글을 읽어야 할지 정확히 알 수 없어요. 분석하고 싶은 글 하나를 열어서, 그 글의 URL(예: blog.naver.com/아이디/글번호)을 입력해 주세요.",
+      },
+      { status: 400 }
+    );
   }
 
   let pageText = "";

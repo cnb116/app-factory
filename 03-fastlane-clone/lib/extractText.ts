@@ -67,6 +67,29 @@ export function buildCrawlTargetUrl(url: URL): string {
   return url.toString();
 }
 
+// 네이버 블로그 "홈/목록" 주소(예: blog.naver.com/balancedlife10)는 모바일 버전으로 우회해도 해결이 안 되는
+// 별도 문제다 — 최신 글 목록 자체가 완전히 클라이언트 JS가 별도 API로 불러오는 SPA 구조라, 정적 HTML에는
+// 글 제목·본문이 전혀 없고(실측: __NEXT류 initialState 스크립트에도 글 목록 데이터 없음) 블로그 제목·
+// 프로필 소개글·메뉴 버튼 텍스트만 남는다. 이걸 그대로 Gemini에 넘기면 프로필 소개글을 "오늘의 주제"로
+// 오인해 완전히 엉뚱한 내용을 만들어낸다. 코드로 우회할 방법이 없으므로(링크·logNo 정보 자체가 HTML에 없음),
+// 크롤링을 시도하기 전에 URL 구조로 먼저 걸러 사용자에게 개별 글 URL을 입력하도록 안내한다.
+export function isNaverBlogListUrl(url: URL): boolean {
+  const isNaverBlogHost = ["blog.naver.com", "www.blog.naver.com", "m.blog.naver.com"].includes(url.hostname);
+  if (!isNaverBlogHost) return false;
+
+  // PostView.naver?blogId=...&logNo=... 형식(레거시 개별 글 URL)은 쿼리스트링에 logNo가 있다 — 제외.
+  if (url.searchParams.has("logNo")) return false;
+
+  const segments = url.pathname.split("/").filter(Boolean);
+  if (segments.length === 0) return true; // blog.naver.com 자체(완전 홈)
+
+  // 개별 글 URL은 .../{블로그아이디}/{글번호(logNo, 순수 숫자)} 형태다.
+  // 글번호 세그먼트가 없으면(홈, 카테고리, 프로필 탭 등) 목록형으로 판단한다.
+  const lastSegment = segments[segments.length - 1];
+  const isIndividualPostUrl = segments.length >= 2 && /^\d+$/.test(lastSegment);
+  return !isIndividualPostUrl;
+}
+
 export function validateCrawlUrl(rawUrl: string): URL | null {
   try {
     const url = new URL(rawUrl);
