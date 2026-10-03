@@ -14,6 +14,7 @@ import {
   describeSlotPlan,
   findHookStructure,
 } from "@/lib/slotPlan";
+import { countTags, stripInternalLabelTags } from "@/lib/tagFilter";
 
 // ── 칸 배정 프롬프트 조각 ──────────────────────────────────────────────
 
@@ -531,6 +532,7 @@ Vrew 무료 스톡 영상은 해외 소스가 많아서, 인물이 등장하는 
   [통일성(연대감) 원리 — 반드시 지킬 것] 기존처럼 희소성 요소(7일 무료 등)는 그대로 담되, 문장의 마무리는 "당신만 하세요", "여러분만 해보세요"처럼 청자만 콕 집어 행동을 요구하는 어투가 아니라 화자와 청자가 함께 하는 연대감 있는 어투로 끝낸다. "같이 해봅시다", "우리 한번 해봅시다"를 그대로 베끼지 말고, 매번 다른 문장으로 새로 쓴다.
 - caption: 유튜브 쇼츠/릴스/틱톡에 공통으로 쓸 수 있는 게시글 캡션 (2~4문장)
 - hashtags: 해시태그 8~12개 (# 포함, 한글/영문 혼용 가능)
+  [태그 금지어 — 반드시 지킬 것] hashtags와 아래 플랫폼별 SEO 태그(youtubeSeo.tags, instagramSeo.hashtags, tiktokSeo.hashtags) 어디에도 훅 스타일 이름(충격 고백형, 넓은 감정형, 타겟 저격형, 질문 도발형 등 위 11가지 이름)이나 감정 이름(막막함, 후회, 답답함, 비교, 불안, 지침, 뿌듯함, 여유, 설렘), 또는 그 일부(예: #넓은감정, #타겟저격, #질문, #반전)를 태그로 쓰지 않는다. 이 이름들은 대본을 쓰기 위한 내부 분류일 뿐이다. 태그는 시청자가 실제로 검색할 법한 주제·상품·상황 키워드로만 채운다.
 
 [플랫폼별 SEO 메타데이터 — 위 caption/hashtags와는 별개로 채널마다 알고리즘·검색 특성에 맞춰 따로 최적화해서 채워줘]
 
@@ -607,7 +609,19 @@ Vrew 무료 스톡 영상은 해외 소스가 많아서, 인물이 등장하는 
       console.log(`[generate-scripts] CTA 시작 어구 쏠림 감지 — ${replacedCount}편의 시작 어구를 후처리로 교체함`);
     }
 
-    return NextResponse.json({ cards });
+    // 4) 해시태그 필터: 캡션 해시태그·SEO 태그에서 내부 분류명(스타일·감정 이름) 태그 제거 (실행 순서 마지막)
+    const removedTags: string[] = [];
+    const filteredCards = cards.map((card) => {
+      const result = stripInternalLabelTags(card);
+      removedTags.push(...result.removed);
+      return result.card;
+    });
+    const totalTags = filteredCards.reduce((sum, card) => sum + countTags(card), 0);
+    console.log(
+      `[generate-scripts] 내부 분류명 태그 필터 — 제거 ${removedTags.length}개${removedTags.length > 0 ? `: ${removedTags.join(", ")}` : ""} / 남은 태그 ${totalTags}개`
+    );
+
+    return NextResponse.json({ cards: filteredCards });
   } catch (err) {
     console.error("[generate-scripts] JSON 파싱 실패 — Gemini 응답이 유효한 JSON이 아님", raw, err);
     return NextResponse.json({ error: "대본 결과 형식이 올바르지 않습니다." }, { status: 502 });
