@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isHardToReadUrl } from "@/lib/inputHints";
 
 interface UrlInputStepProps {
   onSubmit: (url: string) => void;
@@ -13,6 +14,7 @@ const DEMO_URL = "https://app-factory-text-cleaner.vercel.app";
 
 export default function UrlInputStep({ onSubmit, loading, loadingLabel, error }: UrlInputStepProps) {
   const [url, setUrl] = useState("");
+  const showHardToReadWarning = isHardToReadUrl(url);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +50,12 @@ export default function UrlInputStep({ onSubmit, loading, loadingLabel, error }:
           required
           className="w-full rounded-xl border-2 border-black px-4 py-4 text-lg text-black outline-none disabled:opacity-50"
         />
+        <p className="-mt-1 text-lg font-bold text-black">블로그 글 링크를 넣으면 가장 잘 나와요</p>
+        {showHardToReadWarning && (
+          <p role="alert" className="rounded-xl border-2 border-black bg-yellow-300 px-4 py-3 text-lg font-bold leading-snug text-black">
+            ⚠️ 이 링크는 내용을 읽기 어려워요. 블로그 후기 링크를 넣어보세요.
+          </p>
+        )}
         <p className="-mt-2 text-sm text-zinc-500">
           예시: 웹사이트 주소, 스마트스토어 링크, 네이버 블로그 글 URL, 또는 한 줄 소개 페이지
         </p>
