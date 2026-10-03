@@ -1,6 +1,7 @@
 "use client";
 
 import { ScriptCard } from "@/lib/types";
+import { getSecondSectionLabel } from "@/lib/sectionLabels";
 import CopyButton from "./CopyButton";
 import ProPassPaymentButton from "./ProPassPaymentButton";
 import UploadLinkButtons from "./UploadLinkButtons";
@@ -16,7 +17,7 @@ interface PackageStepProps {
 function buildFullScript(card: ScriptCard): string {
   return [
     `[훅 0~5초]\n${card.hookLine}`,
-    `[고통 자극 5~15초]\n${card.painAgitation}`,
+    `[${getSecondSectionLabel(card)} 5~15초]\n${card.painAgitation}`,
     `[시연 가이드 15~30초]\n${card.demoGuide}`,
     `[CTA 30~35초]\n${card.cta}`,
   ].join("\n\n");

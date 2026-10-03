@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ScriptCard } from "@/lib/types";
+import { getSecondSectionEmoji, getSecondSectionLabel } from "@/lib/sectionLabels";
 
 interface SwipeStepProps {
   card: ScriptCard;
@@ -48,7 +49,11 @@ export default function SwipeStep({ card, index, total, onDecision }: SwipeStepP
         </div>
 
         <ScriptLine emoji="🎬" label="훅 (0~5초)" text={card.hookLine} />
-        <ScriptLine emoji="😣" label="고통 자극 (5~15초)" text={card.painAgitation} />
+        <ScriptLine
+          emoji={getSecondSectionEmoji(card)}
+          label={`${getSecondSectionLabel(card)} (5~15초)`}
+          text={card.painAgitation}
+        />
         <ScriptLine emoji="🎥" label="시연 가이드 (15~30초)" text={card.demoGuide} />
         <ScriptLine emoji="📣" label="CTA (30~35초)" text={card.cta} />
       </div>

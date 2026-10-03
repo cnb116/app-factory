@@ -25,6 +25,9 @@ export interface TiktokSeoMeta {
 export interface ScriptCard {
   id: string;
   hookType: string;
+  // 넓은 감정형 카드에만 채워진다. 밝은 감정이면 2구간(painAgitation 필드)이 "고통 자극"이 아니라 "기대 키우기"로 쓰인다.
+  emotion?: string;
+  emotionTone?: "dark" | "bright";
   thumbnailLine1: string;
   thumbnailLine2: string;
   hookLine: string;

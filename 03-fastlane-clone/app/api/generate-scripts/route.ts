@@ -1,27 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGeminiApiKey, geminiEndpoint } from "@/lib/gemini";
 import { ContentAnalysis, ScriptCard } from "@/lib/types";
+import {
+  BROAD_HOOK_TYPE,
+  DARK_EMOTIONS,
+  BRIGHT_EMOTIONS,
+  EMOTION_BY_NAME,
+  EmotionDef,
+  HOOK_STRUCTURES,
+  SlotAssignment,
+  TARGETED_HOOK_TYPE,
+  buildSlotPlan,
+  describeSlotPlan,
+  findHookStructure,
+} from "@/lib/slotPlan";
 
-const HOOK_STRUCTURES = [
-  "충격 고백형 — 화자가 자신의 부끄러운 실패담을 먼저 고백하며 시작",
-  "극단적 대조형 — '이렇게 하면 vs 이렇게 하면' 전후 비교로 시작",
-  "경고형 — '이거 모르면 무조건 손해봅니다'로 시작",
-  "질문 도발형 — 시청자를 콕 찍어 도발적인 질문을 던지며 시작",
-  "반전 서사형 — 평범한 상황처럼 시작했다가 중간에 반전이 드러남",
-  "통계 충격형 — 충격적인 숫자/통계를 던지며 시작",
-  "타겟 저격형 — '이거 지금 이런 상황이신 분만 보세요'처럼 특정 조건에 해당하는 시청자만 콕 집어 부르며 시작",
-  "비밀 공개형 — '아무도 안 알려주는 비밀인데'로 시작",
-  "실패담 공감형 — 시청자가 겪었을 법한 실패 상황을 먼저 재연",
-  "초스피드 해결형 — '3초면 끝나는 방법'처럼 속도를 강조하며 시작",
-  "넓은 감정형 — 업종과 무관하게 누구나 겪는 넓은 감정(뭔가 준비하다가 시간만 잡아먹힌 경험, 말로 설명하는 게 지겨워진 순간 등)으로 시작",
-];
+// ── 칸 배정 프롬프트 조각 ──────────────────────────────────────────────
 
-// "넓은 감정형" 훅은 프롬프트에 "최소 3종 필수"를 명시해도 실제 생성에서 0편이 나오는 경우가 반복 확인되어
-// (CTA 반복 문제와 동일한 패턴 — 프롬프트 지시만으로는 구조적 보장이 안 됨), 생성 직후 코드로 개수를 집계하고
-// 부족하면 다른 대본의 "훅 구간만"(hookType/썸네일/hookLine/hookSearchKeyword) 넓은 감정형으로 다시 쓰게 한다.
-// painAgitation부터 이어지는 본문·CTA·SEO 메타데이터는 그대로 유지한다.
-const BROAD_HOOK_TYPE = "넓은 감정형";
-const PROTECTED_HOOK_TYPE = "타겟 저격형"; // 최소 1편 보장 규칙을 깨지 않도록 교체 후보에서 최대한 제외
+// 넓은 감정형 칸의 감정 규칙. 메인 생성 프롬프트와 안전망 재생성 프롬프트가 같은 문구를 쓴다.
+const BROAD_EMOTION_RULES = `[넓은 감정형 감정 규칙 — 넓은 감정형으로 배정된 칸에서만 반드시 지킬 것]
+- 어두운 감정 칸(막막함/후회/답답함/비교/불안/지침): hookLine은 배정된 감정 하나로 연다. 감정마다 느낌 힌트가 다르니, 칸마다 서로 다른 장면·표현으로 쓰고 "시간만 잡아먹힌 경험" 같은 한 가지 표현으로 쏠리지 않게 한다. 2구간(painAgitation)은 기존 규칙대로 그 감정에서 이 서비스가 해결하는 구체적 고통으로 좁혀 간다.
+- 밝은 감정 칸(뿌듯함/여유/설렘): 흐름이 "힘들다 → 해결"이 아니라 "좋다 → 이것까지 되니 더 좋다"이다.
+  · hookLine: 업종과 무관하게 누구나 겪어 봤을 좋은 순간·기분(배정된 감정)으로 연다. 고통·불평·"힘들다"는 쓰지 않는다.
+  · painAgitation: 이 칸의 2구간은 "고통 자극"이 아니라 "기대 키우기" 구간이다. 고통을 자극하지 말고, 그 좋은 기분이 여기서 한 걸음 더 나아가면 얼마나 더 좋을지 기대를 키우는 온전한 문장 2개로 쓴다. 이 칸에서는 "고통을 콕 찌르는 첫 문장" 지시와 [감정 축 다양화]를 적용하지 않으며, 사회적 증거 원리는 "다들 이런 걸 바라더라고요" 같은 기대 공감 형태로만 적용한다(고통 표현 금지).
+  · painSearchKeyword: 밝은 분위기의 무인물 사물·풍경 키워드 1단어(예: "햇살", "커피잔", "창가", "새싹").
+  · demoGuide: "이것까지 되니 더 좋다" 흐름으로, 시연하면서 "여기에 이것까지 되니까 더 좋다"는 느낌으로 장점을 짚는다. 권위·사실 왜곡 금지 규칙은 그대로 적용한다.
+  · cta: 기존 규칙 그대로.
+- 모든 넓은 감정형 칸 공통: hookLine에 "숏폼", "대본", "쇼츠", "영상"이라는 단어를 절대 쓰지 않고, 업종·도구명 없이 누구나 겪는 보편적 감정으로 연다.`;
+
+function buildSlotAssignmentBlock(plan: SlotAssignment[]): string {
+  const lines = plan.map((s) => {
+    const emotionPart = s.emotion
+      ? ` / 감정: ${s.emotion.name} (${s.emotion.tone === "bright" ? "밝은 감정" : "어두운 감정"} — ${s.emotion.hint})`
+      : "";
+    const extraPart = s.extraRules.length > 0 ? ` / 추가 규칙: ${s.extraRules.join(" ")}` : "";
+    return `${s.slot}번 편: ${s.hookType}${emotionPart}${extraPart}`;
+  });
+  return `[편별 칸 배정 — 반드시 그대로 따를 것]
+아래 ${plan.length}칸의 스타일과 감정은 코드가 미리 정해 둔 배정이다. 반환 배열의 N번째 원소는 반드시 N번 편 배정대로 쓴다. 순서를 바꾸거나, 스타일을 바꾸거나, 다른 감정으로 대체하지 않는다. 각 편의 hookType에는 배정된 스타일 이름을, emotion에는 배정된 감정 이름(넓은 감정형 칸이 아니면 "없음")을 글자 그대로 적어 돌려준다.
+${lines.join("\n")}`;
+}
+
+// ── 안전망 ──────────────────────────────────────────────────────────
+// 정상 흐름에서는 생성 요청 1회로 끝난다(코드가 칸 배정을 프롬프트에 명시했기 때문).
+// 응답이 배정과 다르거나(스타일·감정 불일치) 넓은 감정형이 기준(MIN_BROAD_HOOK) 미만일 때만 작동해,
+// 해당 칸의 훅(밝은 감정 칸이면 기대 키우기·시연 가이드까지)만 묶어서 1회 재생성한다.
+// 재생성도 배정된 스타일·감정을 따르며, 실패하면 원본 결과를 그대로 반환한다.
 const MIN_BROAD_HOOK = 3; // 10편 기준 최소 보장 개수
 const MIN_BROAD_HOOK_BASE_COUNT = 10;
 
@@ -30,125 +54,157 @@ function getMinBroadHookCount(totalCards: number): number {
   return Math.max(1, Math.round((MIN_BROAD_HOOK / MIN_BROAD_HOOK_BASE_COUNT) * totalCards));
 }
 
-// 교체할 카드를 고른다: 이미 넓은 감정형인 카드는 건드리지 않고, 타겟 저격형은 최소 1편이 남도록 보호한 뒤
-// 그 외 스타일부터 우선적으로 채워 넣는다. 교체 가능한 카드가 부족하면 있는 만큼만 선택한다(강제로 규칙을 깨지 않음).
-function selectCardsForBroadHookConversion(
+interface Conversion {
+  cardIndex: number;
+  hookType: string;
+  emotion: EmotionDef | null;
+}
+
+// 칸 배정과 응답이 다른 카드(스타일이 다르거나, 넓은 감정형인데 배정된 감정을 안 돌려준 경우)의 인덱스
+function findSlotMismatches(cards: ScriptCard[], plan: SlotAssignment[]): number[] {
+  const limit = Math.min(cards.length, plan.length);
+  const mismatches: number[] = [];
+  for (let i = 0; i < limit; i++) {
+    const slot = plan[i];
+    const card = cards[i];
+    const styleOk = (card.hookType ?? "").trim() === slot.hookType;
+    const emotionOk = slot.emotion ? (card.emotion ?? "").trim() === slot.emotion.name : true;
+    if (!styleOk || !emotionOk) mismatches.push(i);
+  }
+  return mismatches;
+}
+
+// 칸 배정만으로 기준을 못 채울 때(예: 응답 편수 부족) 추가로 넓은 감정형으로 바꿀 카드를 고른다.
+// 이미 넓은 감정형인 카드와 타겟 저격형(고정 칸)은 건드리지 않는다.
+function selectExtraCardsForBroadConversion(
   cards: ScriptCard[],
-  neededCount: number
+  neededCount: number,
+  excludeIndexes: Set<number>
 ): number[] {
-  const protectedTargetedBudget = Math.min(1, cards.filter((c) => c.hookType === PROTECTED_HOOK_TYPE).length);
-  let targetedProtectedRemaining = protectedTargetedBudget;
-
-  const nonTargetedIndexes: number[] = [];
-  const targetedIndexes: number[] = [];
-
-  cards.forEach((card, i) => {
-    if (card.hookType === BROAD_HOOK_TYPE) return;
-    if (card.hookType === PROTECTED_HOOK_TYPE) {
-      targetedIndexes.push(i);
-    } else {
-      nonTargetedIndexes.push(i);
-    }
-  });
-
   const selected: number[] = [];
-  for (const i of nonTargetedIndexes) {
-    if (selected.length >= neededCount) break;
+  for (let i = 0; i < cards.length && selected.length < neededCount; i++) {
+    if (excludeIndexes.has(i)) continue;
+    const type = (cards[i].hookType ?? "").trim();
+    if (type === BROAD_HOOK_TYPE || type === TARGETED_HOOK_TYPE) continue;
     selected.push(i);
   }
-  for (const i of targetedIndexes) {
-    if (selected.length >= neededCount) break;
-    // 타겟 저격형 보호분(최소 1편)을 깎아 먹지 않는 한도 내에서만 추가로 교체 후보에 포함한다.
-    if (targetedIndexes.length - targetedProtectedRemaining <= 0) break;
-    targetedProtectedRemaining -= 1;
-    selected.push(i);
-  }
-
   return selected;
 }
 
-interface BroadHookFields {
-  hookType: string;
+interface RegeneratedFields {
   thumbnailLine1: string;
   thumbnailLine2: string;
   hookLine: string;
   hookSearchKeyword: string;
+  painAgitation: string;
+  painSearchKeyword: string;
+  demoGuide: string;
 }
 
-const BROAD_HOOK_SCHEMA = {
+const REGEN_SCHEMA = {
   type: "ARRAY",
   items: {
     type: "OBJECT",
     properties: {
-      hookType: { type: "STRING" },
       thumbnailLine1: { type: "STRING" },
       thumbnailLine2: { type: "STRING" },
       hookLine: { type: "STRING" },
       hookSearchKeyword: { type: "STRING" },
+      painAgitation: { type: "STRING" },
+      painSearchKeyword: { type: "STRING" },
+      demoGuide: { type: "STRING" },
     },
-    required: ["hookType", "thumbnailLine1", "thumbnailLine2", "hookLine", "hookSearchKeyword"],
+    required: [
+      "thumbnailLine1",
+      "thumbnailLine2",
+      "hookLine",
+      "hookSearchKeyword",
+      "painAgitation",
+      "painSearchKeyword",
+      "demoGuide",
+    ],
   },
 };
 
-function buildBroadHookPrompt(analysis: Partial<ContentAnalysis>, cardsToConvert: ScriptCard[]): string {
+function isBrightConversion(c: Conversion): boolean {
+  return c.emotion?.tone === "bright";
+}
+
+function buildRegenPrompt(analysis: Partial<ContentAnalysis>, conversions: Conversion[], cards: ScriptCard[]): string {
   const painPoints = Array.isArray(analysis.painPoints) ? analysis.painPoints.join(" / ") : "";
-  const items = cardsToConvert
-    .map(
-      (card, i) =>
-        `${i + 1}. 이어지는 painAgitation(참고용 — 이 문장으로 자연스럽게 연결되도록 훅을 써라): "${card.painAgitation}"`
-    )
+  const items = conversions
+    .map((c, i) => {
+      const structure = findHookStructure(c.hookType) ?? c.hookType;
+      const emotionLine = c.emotion
+        ? `\n   감정: ${c.emotion.name} (${c.emotion.tone === "bright" ? "밝은 감정" : "어두운 감정"} — ${c.emotion.hint})`
+        : "";
+      const scope = isBrightConversion(c)
+        ? "\n   다시 쓸 구간: 훅 + 기대 키우기(painAgitation) + painSearchKeyword + 시연 가이드(demoGuide) 전부"
+        : `\n   다시 쓸 구간: 훅(thumbnailLine1, thumbnailLine2, hookLine, hookSearchKeyword)만. painAgitation, painSearchKeyword, demoGuide는 반드시 빈 문자열("")로 둔다. 이어지는 painAgitation(참고용 — 이 문장으로 자연스럽게 연결되도록 훅을 써라): "${cards[c.cardIndex]?.painAgitation ?? ""}"`;
+      return `${i + 1}. 스타일: ${structure}${emotionLine}${scope}`;
+    })
     .join("\n");
 
-  return `너는 숏폼 바이럴 대본의 "훅(hook)" 구간만 다시 쓰는 전문가다.
+  return `너는 숏폼 바이럴 대본의 일부 구간만 다시 쓰는 전문가다.
 
 [분석된 콘텐츠 정보]
 - 타깃 고객: ${analysis.targetAudience ?? ""}
 - 핵심 고통(Pain Point): ${painPoints}
 - 핵심 제공 가치: ${analysis.coreOffer ?? ""}
 
-아래 ${cardsToConvert.length}개 대본의 훅을 전부 "넓은 감정형" 스타일로 새로 써라. 각 대본에 바로 이어지는 painAgitation은 그대로 유지되니, 새 훅이 그 문장으로 자연스럽게 이어지도록 써야 한다.
+아래 ${conversions.length}개 항목을 각각 지정된 스타일·감정에 맞게 다시 써라. 반환 배열의 순서는 아래 목록 순서 그대로다.
 
-[넓은 감정형 스타일 정의 — 반드시 지킬 것]
-업종과 무관하게 누구나 겪는 넓은 감정(뭔가 준비하다가 시간만 잡아먹힌 경험, 말로 설명하는 게 지겨워진 순간 등)으로 연다.
-- hookLine에 "숏폼", "대본", "쇼츠", "영상"이라는 단어를 절대 쓰지 않는다.
-- "${analysis.targetAudience ?? ""}"나 [분석된 콘텐츠 정보]에만 등장하는 구체적인 도구명·서비스명·업종명을 쓰지 않는다. 보편적 감정만으로 연다.
-- 마침표(.)나 느낌표(!)로 끝나는 온전한 문장 1개. 문장 중간에 줄바꿈을 넣지 않는다.
+[공통 규칙]
+- 모든 대사는 화자가 직접 말하는 1인칭 구어체의 온전한 문장이고, 문장 중간에 줄바꿈(\\n)을 넣지 않는다. hookLine은 문장 1개, 시청자를 질책하는 훈계 톤은 쓰지 않는다.
+- thumbnailLine1, thumbnailLine2는 영상 0초에 크게 뜨는 썸네일 문구 2줄(각 줄 12자 이내).
+- hookSearchKeyword, painSearchKeyword는 Vrew 무료 비디오 라이브러리에서 검색할 한글 키워드 1단어이며, 무인물 사물·공간 또는 신체 일부 클로즈업 위주(얼굴이 보이는 키워드 금지).
 - 이 프롬프트의 예시 문장을 그대로 베끼지 않는다.
-예시(참고용, 베끼지 말 것): "뭔가 정리해서 남한테 보여줘야 하는데, 늘 손이 많이 가서 자꾸 미루게 되는 거 있으시죠?"
+- painAgitation, demoGuide도 화자가 시청자에게 직접 말하는 1인칭 구어체 대사다. "~를 보여줍니다", "~를 강조합니다", "~를 시연하며" 같은 3인칭 연출 설명문은 절대 쓰지 않는다. 예: (나쁨) "화면에 주소를 입력하는 과정을 보여줍니다." → (좋음) "여기에 주소만 넣으면 바로 결과가 나와서 정말 편해요."
+- painAgitation은 온전한 문장 2개, demoGuide도 온전한 문장 2개다. demoGuide에는 시연 설명 문장 1개와 "제가 직접 써보니/겪어보니" 식의 직접 경험 기반 신뢰 문장 1개를 넣는다(자격 과시 표현 금지, 예시 문장 베끼기 금지).
+- demoGuide를 다시 쓰는 항목은 [분석된 콘텐츠 정보]에 없는 숫자·스펙·안전/품질/인증 주장을 절대 지어내지 않는다.
 
-[다시 써야 할 대본 목록]
-${items}
+${BROAD_EMOTION_RULES}
 
-각 항목마다 다음을 채워 배열로 반환해줘 (순서는 위 목록 순서 그대로):
-- hookType: 항상 "넓은 감정형" 고정
-- thumbnailLine1, thumbnailLine2: 영상 0초에 화면에 크게 뜨는 썸네일 볼드 문구 2줄 (각 줄 12자 이내)
-- hookLine: 위 규칙을 지킨 새 훅 대사
-- hookSearchKeyword: Vrew 무료 비디오 라이브러리에서 검색할 한글 키워드 1단어 (무인물 또는 신체 일부 클로즈업 위주 — 예: "시계", "타이핑", "빈 사무실")`;
+[다시 쓸 항목]
+${items}`;
 }
 
-// 넓은 감정형 비율이 기준 미달이면 부족분만큼만 묶어서 Gemini에 재요청한다(요청 1회로 최소화).
-// 재요청이 실패(네트워크 오류, 응답 형식 불일치 등)하면 원본 cards를 그대로 반환해 전체 생성이 깨지지 않게 한다.
-async function enforceMinBroadHookRatio(
+// 안전망: 칸 배정과 다른 카드를 배정대로 되돌리거나 넓은 감정형이 기준 미만이면 묶어서 1회 재생성한다.
+async function enforceSlotPlan(
   cards: ScriptCard[],
+  plan: SlotAssignment[],
   analysis: Partial<ContentAnalysis>,
   apiKey: string
-): Promise<{ cards: ScriptCard[]; convertedCount: number; geminiCallMade: boolean }> {
-  const currentBroadCount = cards.filter((c) => c.hookType === BROAD_HOOK_TYPE).length;
+): Promise<{ cards: ScriptCard[]; mismatchCount: number; convertedCount: number; geminiCallMade: boolean }> {
+  const mismatches = findSlotMismatches(cards, plan);
+  const conversions: Conversion[] = mismatches.map((i) => ({
+    cardIndex: i,
+    hookType: plan[i].hookType,
+    emotion: plan[i].emotion,
+  }));
+  const convertedIdx = new Set(mismatches);
+
   const minRequired = getMinBroadHookCount(cards.length);
-  const shortfall = minRequired - currentBroadCount;
+  const keptBroad = cards.filter((c, i) => !convertedIdx.has(i) && (c.hookType ?? "").trim() === BROAD_HOOK_TYPE);
+  const expectedBroad = keptBroad.length + conversions.filter((c) => c.hookType === BROAD_HOOK_TYPE).length;
 
-  if (shortfall <= 0) {
-    return { cards, convertedCount: 0, geminiCallMade: false };
+  if (expectedBroad < minRequired) {
+    const used = new Set<string>([
+      ...keptBroad.map((c) => (c.emotion ?? "").trim()),
+      ...conversions.map((c) => c.emotion?.name ?? ""),
+    ]);
+    const leftoverEmotions = [...DARK_EMOTIONS, ...BRIGHT_EMOTIONS].filter((e) => !used.has(e.name));
+    const extra = selectExtraCardsForBroadConversion(cards, minRequired - expectedBroad, convertedIdx);
+    extra.forEach((i) => {
+      conversions.push({ cardIndex: i, hookType: BROAD_HOOK_TYPE, emotion: leftoverEmotions.shift() ?? DARK_EMOTIONS[0] });
+    });
   }
 
-  const targetIndexes = selectCardsForBroadHookConversion(cards, shortfall);
-  if (targetIndexes.length === 0) {
-    console.warn("[generate-scripts] 넓은 감정형 부족하지만 교체 가능한 카드가 없어 보정을 건너뜀");
-    return { cards, convertedCount: 0, geminiCallMade: false };
+  if (conversions.length === 0) {
+    return { cards, mismatchCount: 0, convertedCount: 0, geminiCallMade: false };
   }
 
-  const cardsToConvert = targetIndexes.map((i) => cards[i]);
-  const prompt = buildBroadHookPrompt(analysis, cardsToConvert);
+  const prompt = buildRegenPrompt(analysis, conversions, cards);
 
   try {
     const response = await fetch(geminiEndpoint(apiKey), {
@@ -158,59 +214,86 @@ async function enforceMinBroadHookRatio(
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           responseMimeType: "application/json",
-          responseSchema: BROAD_HOOK_SCHEMA,
+          responseSchema: REGEN_SCHEMA,
         },
       }),
     });
 
     if (!response.ok) {
       const errBody = await response.text();
-      console.error("[generate-scripts] 넓은 감정형 보정 호출 실패 — non-OK response", response.status, errBody);
-      return { cards, convertedCount: 0, geminiCallMade: true };
+      console.error("[generate-scripts] 안전망 재생성 호출 실패 — non-OK response", response.status, errBody);
+      return { cards, mismatchCount: mismatches.length, convertedCount: 0, geminiCallMade: true };
     }
 
     const data = await response.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (typeof text !== "string" || text.trim() === "") {
-      console.error("[generate-scripts] 넓은 감정형 보정 응답에 후보 텍스트가 없음");
-      return { cards, convertedCount: 0, geminiCallMade: true };
+      console.error("[generate-scripts] 안전망 재생성 응답에 후보 텍스트가 없음");
+      return { cards, mismatchCount: mismatches.length, convertedCount: 0, geminiCallMade: true };
     }
 
-    const parsed = JSON.parse(text) as BroadHookFields[];
-    if (!Array.isArray(parsed) || parsed.length !== targetIndexes.length) {
+    const parsed = JSON.parse(text) as RegeneratedFields[];
+    if (!Array.isArray(parsed) || parsed.length !== conversions.length) {
       console.error(
-        `[generate-scripts] 넓은 감정형 보정 응답 개수 불일치 — 기대 ${targetIndexes.length}, 실제 ${Array.isArray(parsed) ? parsed.length : "배열 아님"}`
+        `[generate-scripts] 안전망 재생성 응답 개수 불일치 — 기대 ${conversions.length}, 실제 ${Array.isArray(parsed) ? parsed.length : "배열 아님"}`
       );
-      return { cards, convertedCount: 0, geminiCallMade: true };
+      return { cards, mismatchCount: mismatches.length, convertedCount: 0, geminiCallMade: true };
     }
 
     const updated = [...cards];
-    targetIndexes.forEach((cardIndex, i) => {
-      const newHook = parsed[i];
-      if (
-        !newHook ||
-        typeof newHook.hookLine !== "string" ||
-        typeof newHook.thumbnailLine1 !== "string" ||
-        typeof newHook.thumbnailLine2 !== "string" ||
-        typeof newHook.hookSearchKeyword !== "string"
-      ) {
-        return; // 이 카드만 원본 유지, 나머지는 정상 반영
-      }
-      updated[cardIndex] = {
-        ...updated[cardIndex],
-        hookType: BROAD_HOOK_TYPE,
-        thumbnailLine1: newHook.thumbnailLine1,
-        thumbnailLine2: newHook.thumbnailLine2,
-        hookLine: newHook.hookLine,
-        hookSearchKeyword: newHook.hookSearchKeyword,
+    let convertedCount = 0;
+    conversions.forEach((conversion, i) => {
+      const fresh = parsed[i];
+      const hookOk =
+        fresh &&
+        [fresh.thumbnailLine1, fresh.thumbnailLine2, fresh.hookLine, fresh.hookSearchKeyword].every(
+          (v) => typeof v === "string" && v.trim() !== ""
+        );
+      const bright = isBrightConversion(conversion);
+      const brightOk =
+        !bright ||
+        [fresh?.painAgitation, fresh?.painSearchKeyword, fresh?.demoGuide].every(
+          (v) => typeof v === "string" && v.trim() !== ""
+        );
+      if (!hookOk || !brightOk) return; // 이 카드만 원본 유지
+
+      updated[conversion.cardIndex] = {
+        ...updated[conversion.cardIndex],
+        hookType: conversion.hookType,
+        emotion: conversion.emotion?.name,
+        emotionTone: conversion.emotion?.tone,
+        thumbnailLine1: fresh.thumbnailLine1,
+        thumbnailLine2: fresh.thumbnailLine2,
+        hookLine: fresh.hookLine,
+        hookSearchKeyword: fresh.hookSearchKeyword,
+        ...(bright
+          ? {
+              painAgitation: fresh.painAgitation,
+              painSearchKeyword: fresh.painSearchKeyword,
+              demoGuide: fresh.demoGuide,
+            }
+          : {}),
       };
+      convertedCount++;
     });
 
-    return { cards: updated, convertedCount: targetIndexes.length, geminiCallMade: true };
+    return { cards: updated, mismatchCount: mismatches.length, convertedCount, geminiCallMade: true };
   } catch (err) {
-    console.error("[generate-scripts] 넓은 감정형 보정 중 예외 발생 — 원본 유지", err);
-    return { cards, convertedCount: 0, geminiCallMade: true };
+    console.error("[generate-scripts] 안전망 재생성 중 예외 발생 — 원본 유지", err);
+    return { cards, mismatchCount: mismatches.length, convertedCount: 0, geminiCallMade: true };
   }
+}
+
+// 최종 정리: 넓은 감정형이 아닌 카드는 감정 정보를 비우고, 넓은 감정형은 감정 이름으로 밝음/어두움을 확정한다.
+// (화면·복사 텍스트에서 2구간 이름이 "기대 키우기"/"고통 자극" 중 무엇인지가 emotionTone으로 결정된다)
+function finalizeCardEmotion(card: ScriptCard): ScriptCard {
+  const isBroad = (card.hookType ?? "").trim() === BROAD_HOOK_TYPE;
+  const def = isBroad ? EMOTION_BY_NAME[(card.emotion ?? "").trim()] : undefined;
+  return {
+    ...card,
+    emotion: def?.name,
+    emotionTone: def?.tone,
+  };
 }
 
 // CTA는 "통일성(연대감) 원리" 때문에 "우리 ... 함께/같이/모두 ~해봅시다" 류의 연대감 표현이 반복되기 쉽다.
@@ -292,6 +375,7 @@ const SCRIPT_SCHEMA = {
     type: "OBJECT",
     properties: {
       hookType: { type: "STRING" },
+      emotion: { type: "STRING" },
       thumbnailLine1: { type: "STRING" },
       thumbnailLine2: { type: "STRING" },
       hookLine: { type: "STRING" },
@@ -331,6 +415,7 @@ const SCRIPT_SCHEMA = {
     },
     required: [
       "hookType",
+      "emotion",
       "thumbnailLine1",
       "thumbnailLine2",
       "hookLine",
@@ -373,6 +458,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "분석 결과가 없습니다." }, { status: 400 });
   }
 
+  // 생성 요청 전에 코드가 10칸의 스타일·감정을 미리 배정한다(매 요청 무작위).
+  const plan = buildSlotPlan();
+  console.log(`[generate-scripts] 칸 배정: ${describeSlotPlan(plan)}`);
+
   const prompt = `너는 숏폼(유튜브 쇼츠/인스타 릴스/틱톡) 바이럴 대본을 전문으로 쓰는 카피라이터다.
 
 [분석된 콘텐츠 정보]
@@ -383,7 +472,11 @@ export async function POST(request: NextRequest) {
 [검증된 바이럴 훅 구조 11가지]
 ${HOOK_STRUCTURES.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 
-위 11가지 훅 구조 중에서 골고루 섞어 총 10편을 만들어줘. 특정 스타일에 치우치지 말고 다양하게 배분하되, "넓은 감정형"과 "타겟 저격형"은 반드시 각각 최소 1편 이상 포함시킨다. 11가지 중 10편만 쓰면 어쩔 수 없이 1개는 빠지게 되는데, 그럴 때도 이 두 스타일은 절대 빼지 말고 그 외의 스타일 중에서만 하나를 제외한다. 템플릿 문구가 아니라 실제로 그대로 촬영해서 쓸 수 있는 완성된 문장으로 써야 한다.
+${buildSlotAssignmentBlock(plan)}
+
+${BROAD_EMOTION_RULES}
+
+위 배정대로 총 ${plan.length}편을 만들어줘. 템플릿 문구가 아니라 실제로 그대로 촬영해서 쓸 수 있는 완성된 문장으로 써야 한다.
 
 [자막 문장 규칙 — 반드시 지킬 것]
 hookLine, painAgitation, demoGuide, cta 이 네 항목은 전부 실제로 화자가 말하는 대사이자, Vrew 같은 자막 편집 프로그램에 "한 구간 = 한 클립"으로 그대로 붙여넣을 텍스트다. 문장 중간에 임의로 줄바꿈(\n)을 넣지 않는다 — Vrew는 줄바꿈마다 새 클립으로 쪼개서 인식하기 때문에, 중간에 줄바꿈이 들어가면 영상이 1초 단위로 잘게 끊기고, 대사가 없는 구간(연출 지시문 등)이 있으면 그 구간은 오디오가 비어버린다. 그러므로:
@@ -398,7 +491,7 @@ hookLine, painAgitation, demoGuide, cta 이 네 항목은 전부 실제로 화�
 
 [예시 문장 재사용 금지 — 반드시 지킬 것] 이 프롬프트 안에서 따옴표로 감싸 보여주는 모든 예시 문장은 느낌·톤을 보여주기 위한 참고일 뿐이다. 실제 출력에서 그 예시 문장을 그대로 베끼거나 토씨만 살짝 바꿔 쓰지 않는다. 특히 사회적 증거·권위·통일성 구간(아래 painAgitation 두 번째 문장, demoGuide의 경험 문장, cta의 마무리 문장)은 10편 전체에서 같은 문장이 반복되지 않도록 편마다 어휘와 어순을 새로 만든다.
 
-[감정 축 다양화 — 반드시 지킬 것] painAgitation과 demoGuide는 문장 표현뿐 아니라 "어떤 종류의 고통/효과를 강조하는지"도 10편 전체에서 다양하게 섞어야 한다. 아래 감정 축 중에서 [분석된 콘텐츠 정보]의 painPoints/coreOffer가 실제로 뒷받침하는 축들을 골라 편마다 다른 축을 배정한다 — 절대 10편 모두 같은 축(예: 전부 "시간 낭비")으로 몰리지 않게 한다.
+[감정 축 다양화 — 반드시 지킬 것] painAgitation과 demoGuide는 문장 표현뿐 아니라 "어떤 종류의 고통/효과를 강조하는지"도 10편 전체에서 다양하게 섞어야 한다. 아래 감정 축 중에서 [분석된 콘텐츠 정보]의 painPoints/coreOffer가 실제로 뒷받침하는 축들을 골라 편마다 다른 축을 배정한다 — 절대 10편 모두 같은 축(예: 전부 "시간 낭비")으로 몰리지 않게 한다. (밝은 감정 칸은 이 축 배정에서 제외한다 — 위 [넓은 감정형 감정 규칙]을 따른다.)
 - 시간 낭비: 이 문제 때문에 시간을 허비한다
 - 돈 낭비: 이 문제 때문에 불필요한 지출·손해가 생긴다
 - 막막함/모름: 뭘 어떻게 해야 할지 몰라 막막하다
@@ -408,7 +501,8 @@ hookLine, painAgitation, demoGuide, cta 이 네 항목은 전부 실제로 화�
 painAgitation에서 고른 감정 축은 demoGuide의 효과 설명(시간이 절약된다/비용이 준다/막막함이 해소된다/수고가 준다 등)과 자연스럽게 이어지게 짝지어 쓴다.
 
 각 편마다 다음을 채워줘:
-- hookType: 사용한 훅 구조 이름 (위 목록의 이름 그대로)
+- hookType: 이 편에 배정된 스타일 이름 (위 칸 배정의 이름 그대로)
+- emotion: 이 편에 배정된 감정 이름 (넓은 감정형 칸이면 배정된 감정 이름 그대로, 아니면 "없음")
 - thumbnailLine1, thumbnailLine2: 영상 0초에 화면에 크게 뜨는 썸네일 볼드 문구 2줄 (각 줄 12자 이내, 강렬하게)
 - hookLine: 영상 시작 0~5초에 화자가 실제로 말하는 훅 대사. 온전한 문장 1개 (위 자막 문장 규칙 적용)
   [호감(공감) 원리 — 반드시 지킬 것] 시청자를 질책하거나 지적하는 표현("~하는 분들, 그거 핑계입니다", "왜 안 하십니까", "형님들이 왜 못 합니까" 같은 훈계·질책 톤)은 절대 쓰지 않는다. 대신 화자가 자기 경험을 먼저 고백하는 형태로 시작한다 (예: "저도 처음엔 ○○ 때문에 몇 개월을 미뤘습니다." 처럼, 청자가 아니라 화자 자신의 과거 이야기로 문을 연다).
@@ -419,7 +513,7 @@ painAgitation에서 고른 감정 축은 demoGuide의 효과 설명(시간이 �
     - 좋은 예(이렇게 열 것): "뭔가 정리해서 남한테 보여줘야 하는데, 늘 손이 많이 가서 자꾸 미루게 되는 거 있으시죠?"
     - 좋은 예(이렇게 열 것): "뭔가 하나 끝내놓고 싶었는데 자잘한 손길이 너무 많이 가서 지쳐버린 적 있으신가요?"
   hookLine이 이렇게 넓게 열려도 painAgitation부터는 반드시 [분석된 콘텐츠 정보]의 실제 타깃/고통/도구로 자연스럽게 좁혀 들어가며 본 서비스로 이어간다.
-  [넓은 감정형 전용 규칙 — hookType을 "넓은 감정형"으로 쓴 편에서만 반드시 지킬 것] hookLine에 "숏폼", "대본", "쇼츠", "영상"이라는 단어를 절대 쓰지 않는다. 특정 업종·콘텐츠 제작을 연상시키는 표현 대신, "뭔가 준비하다가 시간만 잡아먹힌 경험", "말로 설명하는 게 지겨워진 순간"처럼 업종과 무관하게 누구나 겪어봤을 법한 넓은 감정 하나로 문을 연다. painAgitation부터는 다른 스타일과 동일하게 이 서비스가 해결하는 구체적인 고통으로 자연스럽게 좁혀가고, demoGuide에서는 "그래서 요즘은 이 방법을 씁니다"처럼 자연스러운 연결 문장으로 본 서비스 시연으로 이어간다.
+  [넓은 감정형 전용 규칙 — hookType을 "넓은 감정형"으로 쓴 편에서만 반드시 지킬 것] hookLine에 "숏폼", "대본", "쇼츠", "영상"이라는 단어를 절대 쓰지 않는다. 특정 업종·콘텐츠 제작을 연상시키는 표현 대신, "뭔가 준비하다가 시간만 잡아먹힌 경험", "말로 설명하는 게 지겨워진 순간"처럼 업종과 무관하게 누구나 겪어봤을 법한 넓은 감정 하나로 문을 연다. painAgitation부터는 다른 스타일과 동일하게 이 서비스가 해결하는 구체적인 고통으로 자연스럽게 좁혀가고, demoGuide에서는 "그래서 요즘은 이 방법을 씁니다"처럼 자연스러운 연결 문장으로 본 서비스 시연으로 이어간다. (단, 밝은 감정 칸은 이 흐름 대신 위 [넓은 감정형 감정 규칙]의 "좋다 → 이것까지 되니 더 좋다" 흐름을 따른다.)
 - hookSearchKeyword: 0~5초 구간에 깔릴 배경 영상을 Vrew의 내장 무료 비디오 라이브러리에서 검색할 한글 키워드 딱 1단어 (hookLine 내용과 어울리는 장면을 상상할 수 있는 구체적인 명사 하나)
 - painAgitation: 5~15초, 시청자의 고통을 콕 찌르며 공감시키는 대사. 온전한 문장 2개 (위 자막 문장 규칙 적용)
   [사회적 증거 원리 — 반드시 지킬 것] 첫 문장은 기존처럼 고통을 콕 찌르는 문장으로 쓰고, 두 번째 문장은 "나 혼자만 겪는 문제가 아니다"라는 걸 느끼게 하는 문장으로 마무리한다. "저만 그런 게 아니더라고요", "다들 비슷한 이유로 멈춰 있더라고요" 같은 문장을 그대로 베끼지 말고, 이 편의 구체적인 상황에 맞춰 매번 새로운 어휘로 쓴다.
@@ -496,18 +590,19 @@ Vrew 무료 스톡 영상은 해외 소스가 많아서, 인물이 등장하는 
     const rawCards: ScriptCard[] = parsed.map((card, i) => ({ ...card, id: String(i + 1) }));
     console.log(`[generate-scripts] JSON 파싱 성공 — ${rawCards.length}편 생성됨`);
 
-    // 1) 훅 보정: 넓은 감정형 최소 비율 미달 시 부족분만큼 묶어서 재요청
-    const broadHookResult = await enforceMinBroadHookRatio(rawCards, analysis, apiKey);
-    if (broadHookResult.convertedCount > 0) {
-      console.log(
-        `[generate-scripts] 넓은 감정형 부족 감지 — ${broadHookResult.convertedCount}편의 훅을 넓은 감정형으로 재생성함`
+    // 1) 안전망: 응답이 칸 배정과 다르거나 넓은 감정형이 기준 미만일 때만 작동 (정상이면 추가 호출 없음)
+    const net = await enforceSlotPlan(rawCards, plan, analysis, apiKey);
+    const geminiCalls = 1 + (net.geminiCallMade ? 1 : 0);
+    if (net.mismatchCount === 0 && !net.geminiCallMade) {
+      console.log("[generate-scripts] 안전망 미작동 — 응답이 칸 배정과 일치 (Gemini 호출 1회)");
+    } else {
+      console.warn(
+        `[generate-scripts] 안전망 작동 — 배정 불일치 ${net.mismatchCount}칸, 재생성 반영 ${net.convertedCount}편 (Gemini 호출 ${geminiCalls}회)`
       );
-    } else if (broadHookResult.geminiCallMade) {
-      console.warn("[generate-scripts] 넓은 감정형 보정 호출은 했으나 반영 실패 — 원본 훅 유지");
     }
 
-    // 2) CTA 후처리: 시작 어구 쏠림 교체 (훅 보정 다음 순서로 실행)
-    const { cards, replacedCount } = diversifyCtaOpeners(broadHookResult.cards);
+    // 2) 감정 정보 정리(2구간 이름 "기대 키우기"/"고통 자극" 결정) → 3) CTA 후처리 (실행 순서: 생성 → 안전망 → CTA)
+    const { cards, replacedCount } = diversifyCtaOpeners(net.cards.map(finalizeCardEmotion));
     if (replacedCount > 0) {
       console.log(`[generate-scripts] CTA 시작 어구 쏠림 감지 — ${replacedCount}편의 시작 어구를 후처리로 교체함`);
     }
