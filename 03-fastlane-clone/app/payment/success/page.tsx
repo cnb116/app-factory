@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { PAYMENT_ENABLED } from "@/lib/features";
 
 // 심사 캡처용 테스트 연동 — 서버 결제 승인 로직은 이번 범위 밖(운영 전환 시 별도 구현).
 export default function PaymentSuccessPage() {
+  if (!PAYMENT_ENABLED) redirect("/");
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-white px-5 text-center">
       <p className="text-3xl">✅</p>

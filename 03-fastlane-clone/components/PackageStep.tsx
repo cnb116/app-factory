@@ -4,6 +4,7 @@ import { ScriptCard } from "@/lib/types";
 import { getSecondSectionLabel } from "@/lib/sectionLabels";
 import CopyButton from "./CopyButton";
 import ProPassPaymentButton from "./ProPassPaymentButton";
+import { PAYMENT_ENABLED } from "@/lib/features";
 import UploadLinkButtons from "./UploadLinkButtons";
 import VrewRecipeCard from "./VrewRecipeCard";
 import PlatformSeoCards from "./PlatformSeoCards";
@@ -60,7 +61,7 @@ export default function PackageStep({ cards, onRestart, hasUnlimitedAccess }: Pa
       </div>
 
       {/* 7일 매직링크(무제한 이용)가 활성 상태일 때는 "무료인데 왜 결제하라고 하지?" 혼란을 막기 위해 결제 캡슐을 숨긴다. */}
-      {!hasUnlimitedAccess && (
+      {PAYMENT_ENABLED && !hasUnlimitedAccess && (
         <div className="flex flex-col items-center gap-2">
           <ProPassPaymentButton />
         </div>

@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { PAYMENT_ENABLED } from "@/lib/features";
 
 export default function PaymentFailPage() {
+  if (!PAYMENT_ENABLED) redirect("/");
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-white px-5 text-center">
       <p className="text-3xl">⚠️</p>
